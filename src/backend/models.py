@@ -10,3 +10,9 @@ class TrackResponse(BaseModel):
     name: str
     artist: str
     year: str
+
+
+class ReferenceYearResponse(BaseModel):
+    """A randomly selected anchor year for the game timeline."""
+
+    year: int

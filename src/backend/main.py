@@ -1,13 +1,15 @@
 """FastAPI application entry point for VinylVault."""
 
+import random
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
 from src.backend.config import PLAYLIST_ID
-from src.backend.models import TrackResponse
+from src.backend.models import ReferenceYearResponse, TrackResponse
 from src.backend.spotify import (
     get_random_track,
     get_spotify_client,
@@ -25,6 +27,12 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="VinylVault", lifespan=lifespan)
+
+
+@app.get("/api/reference-year", response_model=ReferenceYearResponse)
+async def get_reference_year() -> ReferenceYearResponse:
+    """Return a random year between 1950 and the current year as the timeline anchor."""
+    return ReferenceYearResponse(year=random.randint(1950, datetime.now().year))
 
 
 @app.get("/api/song", response_model=TrackResponse)
