@@ -2,9 +2,11 @@
 
 A party game for music nerds. 
 
-Fun game to guess name, year and artist for random played songs from a provided Spotify playlist.
+Listen to a random track from your Spotify playlist and place it in the right spot on a growing timeline — no peeking at the year!
 
-Built with Spotify, FastAPI.
+Built with **FastAPI** + **spotipy** on the backend and plain HTML/CSS/JS on the frontend.
+
+**TODO: Add screenshot or gif**
 
 ---
 
@@ -47,7 +49,7 @@ make setup
 make run
 ```
 
-Open [http://localhost:8000](http://localhost:8000) in your browser. On first run, Spotify will open a browser tab asking you to authorise the app — follow the prompt and you're good to go.
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser. On first run, Spotify will open a browser tab asking you to authorise the app — follow the prompt and you're good to go.
 
 > **Note:** playback requires Spotify Premium and an active device (desktop app, phone, etc.).
 
@@ -55,9 +57,12 @@ Open [http://localhost:8000](http://localhost:8000) in your browser. On first ru
 
 ## 🎮 How to play
 
-1. Click **Get Song** — a random track from your playlist starts playing on your active Spotify device.
-2. Guess the **song name**, **artist**, and **year**.
-3. Reveal the answer and see how you did!
+1. Click **START** — a random reference year is placed on your timeline as the anchor card.
+2. Click **NEW SONG** — a face-down card appears. Listen to the track and drag the card to where you think it belongs in the timeline.
+3. Click **REVEAL** — if your placement is chronologically correct the card stays; if not, it disappears.
+4. Reach **4 correct cards** (including the reference) and you win! 🏆
+
+Full rules and a game-flow diagram are in [docs/game-mechanics.md](docs/game-mechanics.md).
 
 ---
 
@@ -67,19 +72,27 @@ Open [http://localhost:8000](http://localhost:8000) in your browser. On first ru
 src/
   backend/
     config.py     # loads .config/.env credentials
-    models.py     # Pydantic response models
-    spotify.py    # spotipy client, get_random_track, play_track
+    models.py     # Pydantic response models (TrackResponse, ScoreResponse, …)
+    score.py      # GameScore class — tracks points and win condition
+    spotify.py    # spotipy client, get_random_track, play/pause/resume
     main.py       # FastAPI app + static file serving
   frontend/
     index.html / script.js / styles.css
+docs/
+  game-mechanics.md   # game rules and flow diagrams
 ```
 
 **API endpoints:**
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET`  | `/api/song` | Returns a random track from the playlist |
-| `POST` | `/api/play/{track_id}` | Triggers playback on the active device |
+| `GET`  | `/api/song` | Random track from the playlist |
+| `GET`  | `/api/reference-year` | Random anchor year (1950 – now) |
+| `POST` | `/api/play/{track_id}` | Start playback on the active device |
+| `POST` | `/api/pause` | Pause playback |
+| `POST` | `/api/resume` | Resume playback |
+| `POST` | `/api/score/reset` | Reset score to 1 (new game) |
+| `POST` | `/api/score/add` | Add a point and return `{score, won}` |
 
 ---
 
