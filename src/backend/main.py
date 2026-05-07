@@ -9,7 +9,8 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
 from src.backend.config import PLAYLIST_ID
-from src.backend.models import ReferenceYearResponse, TrackResponse
+from src.backend.models import ReferenceYearResponse, ScoreResponse, TrackResponse
+from src.backend.score import GameScore
 from src.backend.spotify import (
     get_random_track,
     get_spotify_client,
@@ -21,8 +22,9 @@ from src.backend.spotify import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize Spotify client on startup and store on app state."""
+    """Initialize Spotify client and score tracker on startup."""
     app.state.sp = await run_in_threadpool(get_spotify_client)
+    app.state.score = GameScore()
     yield
 
 
@@ -33,6 +35,22 @@ app = FastAPI(title="VinylVault", lifespan=lifespan)
 async def get_reference_year() -> ReferenceYearResponse:
     """Return a random year between 1950 and the current year as the timeline anchor."""
     return ReferenceYearResponse(year=random.randint(1950, datetime.now().year))
+
+
+@app.post("/api/score/reset", response_model=ScoreResponse)
+async def reset_score(request: Request) -> ScoreResponse:
+    """Reset score to 1 (reference card counts as first point) and return it."""
+    request.app.state.score.reset()
+    s = request.app.state.score
+    return ScoreResponse(score=s.value, won=s.won)
+
+
+@app.post("/api/score/add", response_model=ScoreResponse)
+async def add_score(request: Request) -> ScoreResponse:
+    """Add one point for a correct placement and return the updated score."""
+    request.app.state.score.add()
+    s = request.app.state.score
+    return ScoreResponse(score=s.value, won=s.won)
 
 
 @app.get("/api/song", response_model=TrackResponse)

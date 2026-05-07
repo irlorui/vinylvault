@@ -16,3 +16,10 @@ class ReferenceYearResponse(BaseModel):
     """A randomly selected anchor year for the game timeline."""
 
     year: int
+
+
+class ScoreResponse(BaseModel):
+    """Current game score and win state."""
+
+    score: int
+    won: bool
