@@ -5,12 +5,17 @@ const card = document.getElementById("card");
 const errorMsg = document.getElementById("error-msg");
 
 let currentTrack = null;
+let playState = "idle"; // "idle" | "playing" | "paused"
 
 btnNewSong.addEventListener("click", async () => {
   btnNewSong.disabled = true;
   hideError();
 
   try {
+    if (playState === "playing") {
+      await fetch("/api/pause", { method: "POST" });
+    }
+
     const res = await fetch("/api/song");
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -18,6 +23,8 @@ btnNewSong.addEventListener("click", async () => {
       return;
     }
     currentTrack = await res.json();
+    playState = "idle";
+    btnPlay.textContent = "▶ Play";
     card.classList.remove("revealed", "hidden");
     btnPlay.classList.remove("hidden");
     btnReveal.disabled = false;
@@ -32,10 +39,33 @@ btnPlay.addEventListener("click", async () => {
   if (!currentTrack) return;
   hideError();
 
-  const res = await fetch(`/api/play/${currentTrack.track_id}`, { method: "POST" });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    showError(data.detail ?? "Playback failed.");
+  if (playState === "idle") {
+    const res = await fetch(`/api/play/${currentTrack.track_id}`, { method: "POST" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      showError(data.detail ?? "Playback failed.");
+      return;
+    }
+    playState = "playing";
+    btnPlay.textContent = "⏸ Pause";
+  } else if (playState === "playing") {
+    const res = await fetch("/api/pause", { method: "POST" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      showError(data.detail ?? "Pause failed.");
+      return;
+    }
+    playState = "paused";
+    btnPlay.textContent = "▶ Play";
+  } else if (playState === "paused") {
+    const res = await fetch("/api/resume", { method: "POST" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      showError(data.detail ?? "Resume failed.");
+      return;
+    }
+    playState = "playing";
+    btnPlay.textContent = "⏸ Pause";
   }
 });
 

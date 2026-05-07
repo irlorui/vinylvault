@@ -8,7 +8,13 @@ from starlette.concurrency import run_in_threadpool
 
 from src.backend.config import PLAYLIST_ID
 from src.backend.models import TrackResponse
-from src.backend.spotify import get_random_track, get_spotify_client, play_track
+from src.backend.spotify import (
+    get_random_track,
+    get_spotify_client,
+    pause_track,
+    play_track,
+    resume_track,
+)
 
 
 @asynccontextmanager
@@ -31,6 +37,18 @@ async def get_song(request: Request) -> TrackResponse:
 async def play_song(track_id: str, request: Request) -> None:
     """Trigger playback of the given track on the active Spotify device."""
     await run_in_threadpool(play_track, request.app.state.sp, track_id)
+
+
+@app.post("/api/pause", status_code=204)
+async def pause_song(request: Request) -> None:
+    """Pause playback on the active Spotify device."""
+    await run_in_threadpool(pause_track, request.app.state.sp)
+
+
+@app.post("/api/resume", status_code=204)
+async def resume_song(request: Request) -> None:
+    """Resume playback on the active Spotify device."""
+    await run_in_threadpool(resume_track, request.app.state.sp)
 
 
 app.mount("/", StaticFiles(directory="src/frontend", html=True), name="frontend")

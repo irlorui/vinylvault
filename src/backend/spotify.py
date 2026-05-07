@@ -74,3 +74,23 @@ def play_track(sp: spotipy.Spotify, track_id: str) -> None:
         if e.http_status == 403:
             raise HTTPException(status_code=403, detail="Spotify Premium required.")
         raise
+
+
+def pause_track(sp: spotipy.Spotify) -> None:
+    """Pause playback on the active Spotify device."""
+    try:
+        sp.pause_playback()
+    except SpotifyException as e:
+        if e.http_status == 403:
+            raise HTTPException(status_code=403, detail="Spotify Premium required.")
+        raise
+
+
+def resume_track(sp: spotipy.Spotify) -> None:
+    """Resume playback on the active Spotify device."""
+    try:
+        sp.start_playback()
+    except SpotifyException as e:
+        if e.http_status == 403:
+            raise HTTPException(status_code=403, detail="Spotify Premium required.")
+        raise
