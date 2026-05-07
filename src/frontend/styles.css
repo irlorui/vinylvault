@@ -64,9 +64,50 @@ button:disabled { opacity: 0.3; cursor: default; }
 
 #start-screen {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1.25rem;
   padding: 4rem 0;
+}
+
+#device-selector {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  max-width: 320px;
+}
+
+#device-select {
+  flex: 1;
+  background: #1e1e1e;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+#device-select:focus {
+  outline: none;
+  border-color: #1db954;
+}
+
+#btn-refresh-devices {
+  background: #2a2a2a;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 1rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+#btn-refresh-devices:hover {
+  background: #3a3a3a;
 }
 
 /* ─── Game screen ─────────────────────────────────────────────────────────── */

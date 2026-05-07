@@ -23,3 +23,11 @@ class ScoreResponse(BaseModel):
 
     score: int
     won: bool
+
+
+class DeviceResponse(BaseModel):
+    """A Spotify playback device."""
+
+    device_id: str
+    name: str
+    is_active: bool

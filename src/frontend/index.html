@@ -11,7 +11,13 @@
     <h1>Vinyl Vault</h1>
 
     <div id="start-screen">
-      <button id="btn-start">START</button>
+      <button id="btn-start" disabled>START</button>
+      <div id="device-selector">
+        <select id="device-select">
+          <option value="">Loading devices…</option>
+        </select>
+        <button id="btn-refresh-devices" title="Refresh devices">↻</button>
+      </div>
     </div>
 
     <div id="win-screen" class="hidden">

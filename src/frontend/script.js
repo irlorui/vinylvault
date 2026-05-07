@@ -152,6 +152,9 @@ document.getElementById('btn-play-again').addEventListener('click', () => {
   gameScreen.classList.add('hidden');
   document.getElementById('win-screen').classList.add('hidden');
   startScreen.classList.remove('hidden');
+  document.getElementById('device-selector').classList.remove('hidden');
+  const selectedDevice = document.getElementById('device-select').value;
+  document.getElementById('btn-start').disabled = !selectedDevice;
 });
 
 // Drag events on staging card
@@ -273,9 +276,29 @@ function updateUI() {
 
   document.getElementById('score-display').classList.toggle('hidden', phase === 'idle');
   document.getElementById('win-screen').classList.toggle('hidden', phase !== 'won');
+  document.getElementById('device-selector').classList.toggle('hidden', phase !== 'idle');
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
+
+async function loadDevices() {
+  try {
+    const res = await fetch('/api/devices');
+    const devices = await res.json();
+    const select = document.getElementById('device-select');
+    const current = select.value;
+    select.innerHTML = '<option value="">Select a device…</option>';
+    devices.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.device_id;
+      opt.textContent = d.name + (d.is_active ? ' ✓' : '');
+      if (d.device_id === current) opt.selected = true;
+      select.appendChild(opt);
+    });
+  } catch {
+    showError('Could not load Spotify devices.');
+  }
+}
 
 function showError(msg) {
   errorMsg.textContent = msg;
@@ -286,3 +309,19 @@ function hideError() {
   errorMsg.textContent = '';
   errorMsg.classList.add('hidden');
 }
+
+document.getElementById('device-select').addEventListener('change', async e => {
+  const deviceId = e.target.value;
+  document.getElementById('btn-start').disabled = !deviceId;
+  if (!deviceId) return;
+  try {
+    await fetch(`/api/device/${deviceId}`, { method: 'PUT' });
+  } catch {
+    showError('Could not select device.');
+    document.getElementById('btn-start').disabled = true;
+  }
+});
+
+document.getElementById('btn-refresh-devices').addEventListener('click', loadDevices);
+
+loadDevices();

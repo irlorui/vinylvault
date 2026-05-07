@@ -8,9 +8,15 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
-from src.backend.models import ReferenceYearResponse, ScoreResponse, TrackResponse
+from src.backend.models import (
+    DeviceResponse,
+    ReferenceYearResponse,
+    ScoreResponse,
+    TrackResponse,
+)
 from src.backend.score import GameScore
 from src.backend.spotify import (
+    get_devices,
     get_random_track,
     get_spotify_client,
     pause_track,
@@ -24,6 +30,7 @@ async def lifespan(app: FastAPI):
     """Initialize Spotify client and score tracker on startup."""
     app.state.sp = await run_in_threadpool(get_spotify_client)
     app.state.score = GameScore()
+    app.state.device_id = None
     yield
 
 
@@ -58,10 +65,24 @@ async def get_song(request: Request) -> TrackResponse:
     return await run_in_threadpool(get_random_track, request.app.state.sp)
 
 
+@app.get("/api/devices", response_model=list[DeviceResponse])
+async def get_devices_endpoint(request: Request) -> list[DeviceResponse]:
+    """Return all available Spotify playback devices."""
+    return await run_in_threadpool(get_devices, request.app.state.sp)
+
+
+@app.put("/api/device/{device_id}", status_code=204)
+async def set_device(device_id: str, request: Request) -> None:
+    """Pin a Spotify device to use for playback."""
+    request.app.state.device_id = device_id
+
+
 @app.post("/api/play/{track_id}", status_code=204)
 async def play_song(track_id: str, request: Request) -> None:
-    """Trigger playback of the given track on the active Spotify device."""
-    await run_in_threadpool(play_track, request.app.state.sp, track_id)
+    """Trigger playback of the given track on the pinned or active Spotify device."""
+    await run_in_threadpool(
+        play_track, request.app.state.sp, track_id, request.app.state.device_id
+    )
 
 
 @app.post("/api/pause", status_code=204)
