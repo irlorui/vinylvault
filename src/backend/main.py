@@ -8,7 +8,6 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
-from src.backend.config import PLAYLIST_ID
 from src.backend.models import ReferenceYearResponse, ScoreResponse, TrackResponse
 from src.backend.score import GameScore
 from src.backend.spotify import (
@@ -34,7 +33,7 @@ app = FastAPI(title="VinylVault", lifespan=lifespan)
 @app.get("/api/reference-year", response_model=ReferenceYearResponse)
 async def get_reference_year() -> ReferenceYearResponse:
     """Return a random year between 1950 and the current year as the timeline anchor."""
-    return ReferenceYearResponse(year=random.randint(1950, datetime.now().year))
+    return ReferenceYearResponse(year=random.randint(1960, datetime.now().year))
 
 
 @app.post("/api/score/reset", response_model=ScoreResponse)
@@ -56,7 +55,7 @@ async def add_score(request: Request) -> ScoreResponse:
 @app.get("/api/song", response_model=TrackResponse)
 async def get_song(request: Request) -> TrackResponse:
     """Return a random track from the configured playlist."""
-    return await run_in_threadpool(get_random_track, request.app.state.sp, PLAYLIST_ID)
+    return await run_in_threadpool(get_random_track, request.app.state.sp)
 
 
 @app.post("/api/play/{track_id}", status_code=204)

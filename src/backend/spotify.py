@@ -7,13 +7,7 @@ from fastapi import HTTPException
 from spotipy.exceptions import SpotifyException
 from spotipy.oauth2 import SpotifyOAuth
 
-from src.backend.config import (
-    CACHE_PATH,
-    CLIENT_ID,
-    CLIENT_SECRET,
-    PLAYLIST_ID,
-    REDIRECT_URI,
-)
+from src.backend.config import get_settings
 from src.backend.models import TrackResponse
 
 SCOPE = "user-read-playback-state user-modify-playback-state"
@@ -21,20 +15,23 @@ SCOPE = "user-read-playback-state user-modify-playback-state"
 
 def get_spotify_client() -> spotipy.Spotify:
     """Create and return an authenticated Spotify client."""
+    settings = get_settings()
     auth_manager = SpotifyOAuth(
-        client_id=CLIENT_ID,
-        client_secret=CLIENT_SECRET,
-        redirect_uri=REDIRECT_URI,
+        client_id=settings.spotipy_client_id,
+        client_secret=settings.spotipy_client_secret,
+        redirect_uri=settings.spotipy_redirect_uri,
         scope=SCOPE,
-        cache_path=CACHE_PATH,
+        cache_path=settings.cache_path,
     )
     return spotipy.Spotify(auth_manager=auth_manager)
 
 
 def get_random_track(
-    sp: spotipy.Spotify, playlist_id: str = PLAYLIST_ID
+    sp: spotipy.Spotify, playlist_id: str | None = None
 ) -> TrackResponse:
     """Return a random track from the given playlist."""
+    if playlist_id is None:
+        playlist_id = get_settings().playlist_id
     result = sp.playlist_tracks(
         playlist_id,
         fields="items(track(id,name,artists,album(release_date)))",

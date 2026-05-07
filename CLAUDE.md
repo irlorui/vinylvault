@@ -25,7 +25,7 @@ VinylVault is a music timeline game: players listen to random tracks from a Spot
 ```
 src/
   backend/
-    config.py     # loads .config/.env; exports CLIENT_ID, CLIENT_SECRET, REDIRECT_URI, PLAYLIST_ID, CACHE_PATH
+    config.py     # loads .config/.env via pydantic-settings; exports Settings class and get_settings() factory
     models.py     # Pydantic response models: TrackResponse, ReferenceYearResponse, ScoreResponse
     score.py      # GameScore class: reset(), add(), won property; WIN_SCORE constant
     spotify.py    # spotipy client factory, get_random_track, play_track, pause_track, resume_track

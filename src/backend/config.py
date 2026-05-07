@@ -1,13 +1,25 @@
 """Load environment configuration for Spotify credentials."""
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-import os
 
-from dotenv import load_dotenv
+class Settings(BaseSettings):
+    """Spotify and app configuration loaded from .config/.env."""
 
-load_dotenv(".config/.env")
+    model_config = SettingsConfigDict(
+        env_file=".config/.env",
+        env_file_encoding="utf-8"
+    )
 
-CLIENT_ID = os.environ["SPOTIPY_CLIENT_ID"]
-CLIENT_SECRET = os.environ["SPOTIPY_CLIENT_SECRET"]
-REDIRECT_URI = os.environ["SPOTIPY_REDIRECT_URI"]
-PLAYLIST_ID = os.environ["PLAYLIST_ID"]
-CACHE_PATH = ".config/.cache"
+    spotipy_client_id: str = Field(default='client')
+    spotipy_client_secret: str = Field(default='secret')
+    spotipy_redirect_uri: str = Field(default='http://127.0.0.1:8888/callback')
+    playlist_id: str = Field(default='playlist_id')
+    cache_path: str = ".config/.cache"
+
+
+def get_settings() -> Settings:
+    """Get application settings."""
+    settings = Settings()
+    
+    return settings
