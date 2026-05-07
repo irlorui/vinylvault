@@ -1,3 +1,5 @@
 .env
 .venv
 CODEOWNERS
+.config/.cache
+**/__pycache__/
