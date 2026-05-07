@@ -1,10 +1,11 @@
 // Game state
 const game = {
-  phase: 'idle', // 'idle' | 'started' | 'placing' | 'placed' | 'wrong'
+  phase: 'idle', // 'idle' | 'started' | 'placing' | 'placed' | 'wrong' | 'won'
   timeline: [],  // Array<{year, name, artist, track_id, isReference}>
   currentTrack: null,
   placedAtIndex: null,
   playState: 'idle', // 'idle' | 'playing' | 'paused'
+  score: 0,
 };
 
 // DOM refs
@@ -22,11 +23,16 @@ const errorMsg = document.getElementById('error-msg');
 document.getElementById('btn-start').addEventListener('click', async () => {
   hideError();
   try {
-    const res = await fetch('/api/reference-year');
-    if (!res.ok) { showError('Failed to start game.'); return; }
-    const { year } = await res.json();
+    const [refRes, scoreRes] = await Promise.all([
+      fetch('/api/reference-year'),
+      fetch('/api/score/reset', { method: 'POST' }),
+    ]);
+    if (!refRes.ok || !scoreRes.ok) { showError('Failed to start game.'); return; }
+    const { year } = await refRes.json();
+    const { score } = await scoreRes.json();
 
     game.phase = 'started';
+    game.score = score;
     game.timeline = [{ year, isReference: true, name: null, artist: null, track_id: null }];
 
     startScreen.classList.add('hidden');
@@ -106,9 +112,21 @@ btnReveal.addEventListener('click', async () => {
       track_id: game.currentTrack.track_id,
       isReference: false,
     });
-    game.phase = 'started';
     game.currentTrack = null;
     game.placedAtIndex = null;
+
+    const { score, won } = await fetch('/api/score/add', { method: 'POST' }).then(r => r.json());
+    game.score = score;
+
+    if (won) {
+      if (game.playState === 'playing') {
+        await fetch('/api/pause', { method: 'POST' }).catch(() => {});
+        game.playState = 'idle';
+      }
+      game.phase = 'won';
+    } else {
+      game.phase = 'started';
+    }
     render();
   } else {
     game.phase = 'wrong';
@@ -120,6 +138,20 @@ btnReveal.addEventListener('click', async () => {
       render();
     }, 1500);
   }
+});
+
+// PLAY AGAIN
+document.getElementById('btn-play-again').addEventListener('click', () => {
+  game.phase = 'idle';
+  game.timeline = [];
+  game.currentTrack = null;
+  game.placedAtIndex = null;
+  game.score = 0;
+  game.playState = 'idle';
+  btnPlayPause.textContent = '▶ PLAY';
+  gameScreen.classList.add('hidden');
+  document.getElementById('win-screen').classList.add('hidden');
+  startScreen.classList.remove('hidden');
 });
 
 // Drag events on staging card
@@ -138,7 +170,18 @@ currentCard.addEventListener('dragend', () => {
 
 function render() {
   renderTimeline();
+  renderScore();
   updateUI();
+}
+
+function renderScore() {
+  const el = document.getElementById('score-display');
+  el.innerHTML = '';
+  for (let i = 1; i <= 4; i++) {
+    const pip = document.createElement('span');
+    pip.className = 'score-pip' + (i <= game.score ? ' filled' : '');
+    el.appendChild(pip);
+  }
 }
 
 function renderTimeline() {
@@ -227,6 +270,9 @@ function updateUI() {
   btnReveal.disabled = phase !== 'placed';
 
   btnNewSong.classList.toggle('hidden', phase !== 'started');
+
+  document.getElementById('score-display').classList.toggle('hidden', phase === 'idle');
+  document.getElementById('win-screen').classList.toggle('hidden', phase !== 'won');
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────

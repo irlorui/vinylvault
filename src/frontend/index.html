@@ -8,13 +8,23 @@
 </head>
 <body>
   <main>
-    <h1>VinylVault</h1>
+    <h1>Vinyl Vault</h1>
 
     <div id="start-screen">
       <button id="btn-start">START</button>
     </div>
 
+    <div id="win-screen" class="hidden">
+      <div id="win-card">
+        <p class="win-title">Congratulations!</p>
+        <p class="win-subtitle">You won!</p>
+        <button id="btn-play-again">PLAY AGAIN</button>
+      </div>
+    </div>
+
     <div id="game-screen" class="hidden">
+      <div id="score-display"></div>
+
       <div id="timeline-container">
         <div id="timeline"></div>
       </div>
