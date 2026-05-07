@@ -1,0 +1,36 @@
+"""FastAPI application entry point for VinylVault."""
+
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
+
+from src.backend.config import PLAYLIST_ID
+from src.backend.models import TrackResponse
+from src.backend.spotify import get_random_track, get_spotify_client, play_track
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize Spotify client on startup and store on app state."""
+    app.state.sp = await run_in_threadpool(get_spotify_client)
+    yield
+
+
+app = FastAPI(title="VinylVault", lifespan=lifespan)
+
+
+@app.get("/api/song", response_model=TrackResponse)
+async def get_song(request: Request) -> TrackResponse:
+    """Return a random track from the configured playlist."""
+    return await run_in_threadpool(get_random_track, request.app.state.sp, PLAYLIST_ID)
+
+
+@app.post("/api/play/{track_id}", status_code=204)
+async def play_song(track_id: str, request: Request) -> None:
+    """Trigger playback of the given track on the active Spotify device."""
+    await run_in_threadpool(play_track, request.app.state.sp, track_id)
+
+
+app.mount("/", StaticFiles(directory="src/frontend", html=True), name="frontend")

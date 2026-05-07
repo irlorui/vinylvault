@@ -1,9 +1,8 @@
-.PHONY: pre-commit run
+.PHONY: setup pre-commit run ruff-format
 
 setup:
-	uv venv
+	uv venv --clear
 	uv sync
-
 run:
 	uv run uvicorn src.backend.main:app --reload
 
