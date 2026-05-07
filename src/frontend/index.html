@@ -10,23 +10,30 @@
   <main>
     <h1>VinylVault</h1>
 
-    <div class="controls">
-      <button id="btn-new-song">NEW SONG</button>
-      <button id="btn-reveal" disabled>REVEAL</button>
+    <div id="start-screen">
+      <button id="btn-start">START</button>
     </div>
 
-    <div id="card" class="card hidden">
-      <div class="card-inner">
-        <div class="card-front"></div>
-        <div class="card-back">
-          <p id="track-name"></p>
-          <p id="track-artist"></p>
-          <p id="track-year"></p>
+    <div id="game-screen" class="hidden">
+      <div id="timeline-container">
+        <div id="timeline"></div>
+      </div>
+
+      <div id="staging-area">
+        <div id="current-card" class="hidden" draggable="false">
+          <span class="mystery">?</span>
+          <span class="drag-hint">drag to timeline</span>
         </div>
+
+        <div id="song-controls" class="hidden">
+          <button id="btn-play-pause">&#9654; PLAY</button>
+          <button id="btn-reveal" disabled>REVEAL</button>
+        </div>
+
+        <button id="btn-new-song" class="hidden">NEW SONG</button>
       </div>
     </div>
 
-    <button id="btn-play" class="hidden">&#9654; Play</button>
     <p id="error-msg" class="error hidden"></p>
   </main>
 

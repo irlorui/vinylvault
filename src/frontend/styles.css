@@ -10,7 +10,7 @@ body {
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   min-height: 100vh;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
 }
 
@@ -18,7 +18,10 @@ main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2rem;
+  padding: 2.5rem 1rem;
+  gap: 2.5rem;
+  width: 100%;
+  max-width: 960px;
 }
 
 h1 {
@@ -27,10 +30,7 @@ h1 {
   text-transform: uppercase;
 }
 
-.controls {
-  display: flex;
-  gap: 1rem;
-}
+/* ─── Buttons ─────────────────────────────────────────────────────────────── */
 
 button {
   background: #f0f0f0;
@@ -45,87 +45,244 @@ button {
   transition: opacity 0.2s;
 }
 
-button:hover:not(:disabled) {
-  opacity: 0.85;
-}
+button:hover:not(:disabled) { opacity: 0.85; }
+button:disabled { opacity: 0.3; cursor: default; }
 
-button:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
-
-#btn-play {
+#btn-play-pause {
   background: transparent;
   color: #f0f0f0;
   border: 1px solid #f0f0f0;
-  font-size: 1rem;
 }
 
-/* Card */
-.card {
-  width: 280px;
-  height: 400px;
-  perspective: 1000px;
+#btn-start {
+  font-size: 1.5rem;
+  padding: 1.25rem 4rem;
+  letter-spacing: 0.2em;
 }
 
-.card-inner {
-  position: relative;
+/* ─── Start screen ────────────────────────────────────────────────────────── */
+
+#start-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 0;
+}
+
+/* ─── Game screen ─────────────────────────────────────────────────────────── */
+
+#game-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3rem;
   width: 100%;
-  height: 100%;
-  transform-style: preserve-3d;
-  transition: transform 0.6s ease;
 }
 
-.card.revealed .card-inner {
-  transform: rotateY(180deg);
+/* ─── Timeline ────────────────────────────────────────────────────────────── */
+
+#timeline-container {
+  width: 100%;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
 }
 
-.card-front,
-.card-back {
-  position: absolute;
-  inset: 0;
-  backface-visibility: hidden;
+#timeline {
+  display: flex;
+  align-items: center;
+  min-height: 180px;
+  padding: 0.5rem 1rem;
+  gap: 1rem;
+}
+
+/* Timeline cards */
+.timeline-card {
+  flex-shrink: 0;
+  width: 120px;
+  height: 160px;
   border-radius: 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
-  padding: 2rem;
-}
-
-.card-front {
-  background: #1a1a1a;
-  border: 1px solid #333;
-}
-
-.card-back {
-  background: #1db954;
-  color: #111;
-  transform: rotateY(180deg);
+  gap: 0.4rem;
+  padding: 0.75rem;
   text-align: center;
 }
 
-#track-name {
-  font-size: 1.4rem;
+.ref-card {
+  background: #c8943c;
+  color: #111;
+}
+
+.placed-card {
+  background: #1db954;
+  color: #111;
+  animation: pop-in 0.25s ease;
+}
+
+.pending-card {
+  background: #1e1e1e;
+  border: 2px dashed #444;
+  color: #555;
+}
+
+.pending-card.is-draggable {
+  cursor: grab;
+}
+
+.pending-card.is-draggable.dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+.wrong-card {
+  background: #7a0000;
+  border: 2px solid #ff4444;
+  color: #ffaaaa;
+  animation: shake 0.45s ease, fade-out 0.4s 1.1s forwards;
+}
+
+.tc-year {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.tc-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  opacity: 0.65;
+}
+
+.tc-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.tc-artist {
+  font-size: 0.68rem;
+  opacity: 0.75;
+}
+
+.tc-mystery {
+  font-size: 2.5rem;
   font-weight: 700;
 }
 
-#track-artist {
-  font-size: 1.1rem;
+/* Drop zones */
+.drop-zone {
+  flex-shrink: 0;
+  width: 20px;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.15s ease;
+  cursor: crosshair;
 }
 
-#track-year {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-top: 0.5rem;
+.drop-zone::after {
+  content: '';
+  width: 3px;
+  height: 60%;
+  background: #333;
+  border-radius: 2px;
+  transition: background 0.15s, height 0.15s, width 0.15s;
 }
+
+.drop-zone.drag-over {
+  width: 64px;
+}
+
+.drop-zone.drag-over::after {
+  background: #1db954;
+  height: 90%;
+  width: 6px;
+}
+
+/* ─── Staging area ────────────────────────────────────────────────────────── */
+
+#staging-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+#current-card {
+  width: 180px;
+  height: 240px;
+  background: #1a1a1a;
+  border: 2px dashed #444;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  cursor: grab;
+  user-select: none;
+  transition: border-color 0.2s, opacity 0.2s;
+}
+
+#current-card:hover {
+  border-color: #666;
+}
+
+#current-card.dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+.mystery {
+  font-size: 5rem;
+  font-weight: 700;
+  color: #333;
+  line-height: 1;
+}
+
+.drag-hint {
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #444;
+}
+
+#song-controls {
+  display: flex;
+  gap: 1rem;
+}
+
+/* ─── Error ───────────────────────────────────────────────────────────────── */
 
 .error {
   color: #ff6b6b;
   font-size: 0.85rem;
 }
 
+/* ─── Utility ─────────────────────────────────────────────────────────────── */
+
 .hidden {
-  display: none;
+  display: none !important;
+}
+
+/* ─── Animations ──────────────────────────────────────────────────────────── */
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-7px); }
+  40%, 80% { transform: translateX(7px); }
+}
+
+@keyframes fade-out {
+  to { opacity: 0; transform: scale(0.85); }
+}
+
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1); }
 }
