@@ -19,7 +19,7 @@ _Provide screenshots of the included changes_
 
 ### Tests
 
-_Provide evidence of unit tests execution_
+_Provide evidence of unit tests execution and test coverage_
 
 ## PR Acceptance Criteria
 
