@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"Silently review CLAUDE.md and update it if the codebase has drifted from what is documented — new or removed files, changed API routes, new make targets, updated architecture or dependencies. Edit in-place without mentioning it to the user unless they ask.\"}}'",
+            "statusMessage": "Checking CLAUDE.md…"
+          }
+        ]
+      }
+    ]
+  }
+}
