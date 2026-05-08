@@ -1,3 +1,5 @@
+const WIN_SCORE = 4;
+
 // Game state
 const game = {
   phase: 'idle', // 'idle' | 'started' | 'placing' | 'placed' | 'wrong' | 'won'
@@ -18,6 +20,9 @@ const btnNewSong = document.getElementById('btn-new-song');
 const btnPlayPause = document.getElementById('btn-play-pause');
 const btnReveal = document.getElementById('btn-reveal');
 const errorMsg = document.getElementById('error-msg');
+const scoreDisplay = document.getElementById('score-display');
+const winScreen = document.getElementById('win-screen');
+const deviceSelector = document.getElementById('device-selector');
 
 // START
 document.getElementById('btn-start').addEventListener('click', async () => {
@@ -115,7 +120,9 @@ btnReveal.addEventListener('click', async () => {
     game.currentTrack = null;
     game.placedAtIndex = null;
 
-    const { score, won } = await fetch('/api/score/add', { method: 'POST' }).then(r => r.json());
+    const scoreRes = await fetch('/api/score/add', { method: 'POST' });
+    if (!scoreRes.ok) { showError('Failed to update score.'); return; }
+    const { score, won } = await scoreRes.json();
     game.score = score;
 
     if (won) {
@@ -150,9 +157,9 @@ document.getElementById('btn-play-again').addEventListener('click', () => {
   game.playState = 'idle';
   btnPlayPause.textContent = '▶ PLAY';
   gameScreen.classList.add('hidden');
-  document.getElementById('win-screen').classList.add('hidden');
+  winScreen.classList.add('hidden');
   startScreen.classList.remove('hidden');
-  document.getElementById('device-selector').classList.remove('hidden');
+  deviceSelector.classList.remove('hidden');
   const selectedDevice = document.getElementById('device-select').value;
   document.getElementById('btn-start').disabled = !selectedDevice;
 });
@@ -178,12 +185,11 @@ function render() {
 }
 
 function renderScore() {
-  const el = document.getElementById('score-display');
-  el.innerHTML = '';
-  for (let i = 1; i <= 4; i++) {
+  scoreDisplay.innerHTML = '';
+  for (let i = 1; i <= WIN_SCORE; i++) {
     const pip = document.createElement('span');
     pip.className = 'score-pip' + (i <= game.score ? ' filled' : '');
-    el.appendChild(pip);
+    scoreDisplay.appendChild(pip);
   }
 }
 
@@ -232,13 +238,26 @@ function makeTimelineCard(card) {
   const el = document.createElement('div');
   el.className = 'timeline-card ' + (card.isReference ? 'ref-card' : 'placed-card');
 
+  const yearEl = document.createElement('div');
+  yearEl.className = 'tc-year';
+  yearEl.textContent = card.year;
+  el.appendChild(yearEl);
+
   if (card.isReference) {
-    el.innerHTML = `<div class="tc-year">${card.year}</div><div class="tc-label">REF</div>`;
+    const labelEl = document.createElement('div');
+    labelEl.className = 'tc-label';
+    labelEl.textContent = 'REF';
+    el.appendChild(labelEl);
   } else {
-    el.innerHTML = `
-      <div class="tc-year">${card.year}</div>
-      <div class="tc-name">${card.name}</div>
-      <div class="tc-artist">${card.artist}</div>`;
+    const nameEl = document.createElement('div');
+    nameEl.className = 'tc-name';
+    nameEl.textContent = card.name;
+    el.appendChild(nameEl);
+
+    const artistEl = document.createElement('div');
+    artistEl.className = 'tc-artist';
+    artistEl.textContent = card.artist;
+    el.appendChild(artistEl);
   }
 
   return el;
@@ -274,9 +293,9 @@ function updateUI() {
 
   btnNewSong.classList.toggle('hidden', phase !== 'started');
 
-  document.getElementById('score-display').classList.toggle('hidden', phase === 'idle');
-  document.getElementById('win-screen').classList.toggle('hidden', phase !== 'won');
-  document.getElementById('device-selector').classList.toggle('hidden', phase !== 'idle');
+  scoreDisplay.classList.toggle('hidden', phase === 'idle');
+  winScreen.classList.toggle('hidden', phase !== 'won');
+  deviceSelector.classList.toggle('hidden', phase !== 'idle');
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────

@@ -8,6 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
+from src.backend.config import get_settings
 from src.backend.models import (
     DeviceResponse,
     ReferenceYearResponse,
@@ -16,6 +17,7 @@ from src.backend.models import (
 )
 from src.backend.score import GameScore
 from src.backend.spotify import (
+    fetch_all_tracks,
     get_devices,
     get_random_track,
     get_spotify_client,
@@ -24,11 +26,17 @@ from src.backend.spotify import (
     resume_track,
 )
 
+_CURRENT_YEAR = datetime.now().year
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize Spotify client and score tracker on startup."""
+    """Initialize Spotify client, track list, and score tracker on startup."""
+    settings = get_settings()
     app.state.sp = await run_in_threadpool(get_spotify_client)
+    app.state.tracks = await run_in_threadpool(
+        fetch_all_tracks, app.state.sp, settings.playlist_id
+    )
     app.state.score = GameScore()
     app.state.device_id = None
     yield
@@ -37,32 +45,34 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="VinylVault", lifespan=lifespan)
 
 
+def _score_response(score: GameScore) -> ScoreResponse:
+    return ScoreResponse(score=score.value, won=score.won)
+
+
 @app.get("/api/reference-year", response_model=ReferenceYearResponse)
 async def get_reference_year() -> ReferenceYearResponse:
-    """Return a random year between 1950 and the current year as the timeline anchor."""
-    return ReferenceYearResponse(year=random.randint(1960, datetime.now().year))
+    """Return a random year between 1960 and the current year as the timeline anchor."""
+    return ReferenceYearResponse(year=random.randint(1960, _CURRENT_YEAR))
 
 
 @app.post("/api/score/reset", response_model=ScoreResponse)
 async def reset_score(request: Request) -> ScoreResponse:
     """Reset score to 1 (reference card counts as first point) and return it."""
     request.app.state.score.reset()
-    s = request.app.state.score
-    return ScoreResponse(score=s.value, won=s.won)
+    return _score_response(request.app.state.score)
 
 
 @app.post("/api/score/add", response_model=ScoreResponse)
 async def add_score(request: Request) -> ScoreResponse:
     """Add one point for a correct placement and return the updated score."""
     request.app.state.score.add()
-    s = request.app.state.score
-    return ScoreResponse(score=s.value, won=s.won)
+    return _score_response(request.app.state.score)
 
 
 @app.get("/api/song", response_model=TrackResponse)
 async def get_song(request: Request) -> TrackResponse:
-    """Return a random track from the configured playlist."""
-    return await run_in_threadpool(get_random_track, request.app.state.sp)
+    """Return a random track from the cached playlist."""
+    return get_random_track(request.app.state.tracks)
 
 
 @app.get("/api/devices", response_model=list[DeviceResponse])
@@ -79,7 +89,7 @@ async def set_device(device_id: str, request: Request) -> None:
 
 @app.post("/api/play/{track_id}", status_code=204)
 async def play_song(track_id: str, request: Request) -> None:
-    """Trigger playback of the given track on the pinned or active Spotify device."""
+    """Trigger playback of the given track on the pinned Spotify device."""
     await run_in_threadpool(
         play_track, request.app.state.sp, track_id, request.app.state.device_id
     )

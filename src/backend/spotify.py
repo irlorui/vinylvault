@@ -1,6 +1,7 @@
 """Spotify client factory and playback helpers."""
 
 import random
+from contextlib import contextmanager
 
 import spotipy
 from fastapi import HTTPException
@@ -11,6 +12,17 @@ from src.backend.config import get_settings
 from src.backend.models import DeviceResponse, TrackResponse
 
 SCOPE = "user-read-playback-state user-modify-playback-state"
+
+
+@contextmanager
+def _spotify_op():
+    """Wrap a Spotify call, converting 403s to HTTPException."""
+    try:
+        yield
+    except SpotifyException as e:
+        if e.http_status == 403:
+            raise HTTPException(status_code=403, detail="Spotify Premium required.")
+        raise
 
 
 def get_spotify_client() -> spotipy.Spotify:
@@ -26,25 +38,25 @@ def get_spotify_client() -> spotipy.Spotify:
     return spotipy.Spotify(auth_manager=auth_manager)
 
 
-def get_random_track(
-    sp: spotipy.Spotify, playlist_id: str | None = None
-) -> TrackResponse:
-    """Return a random track from the given playlist."""
-    if playlist_id is None:
-        playlist_id = get_settings().playlist_id
+def fetch_all_tracks(sp: spotipy.Spotify, playlist_id: str) -> list[dict]:
+    """Fetch every track from a playlist, following pagination."""
+    tracks = []
     result = sp.playlist_tracks(
         playlist_id,
-        fields="items(track(id,name,artists,album(release_date)))",
+        fields="items(track(id,name,artists,album(release_date))),next",
         limit=100,
     )
-    if not result:
-        raise HTTPException(status_code=500, detail="Failed to fetch playlist tracks.")
-    items = [i for i in result["items"] if i.get("track") is not None]
+    while result:
+        tracks.extend(i["track"] for i in result["items"] if i.get("track") is not None)
+        result = sp.next(result) if result.get("next") else None
+    return tracks
 
-    if not items:
+
+def get_random_track(tracks: list[dict]) -> TrackResponse:
+    """Return a random track from a pre-fetched list."""
+    if not tracks:
         raise HTTPException(status_code=404, detail="No playable tracks in playlist.")
-
-    track = random.choice(items)["track"]
+    track = random.choice(tracks)
     return TrackResponse(
         track_id=track["id"],
         name=track["name"],
@@ -69,42 +81,23 @@ def get_devices(sp: spotipy.Spotify) -> list[DeviceResponse]:
 def play_track(
     sp: spotipy.Spotify, track_id: str, device_id: str | None = None
 ) -> None:
-    """Start playback of a track on the given or active Spotify device."""
+    """Start playback of a track on the pinned Spotify device."""
     if device_id is None:
-        devices = sp.devices()
-        available = (devices or {}).get("devices", [])
-        if not available:
-            raise HTTPException(
-                status_code=503,
-                detail="No Spotify device found. Open Spotify on any device first.",
-            )
-        device_id = next(
-            (d["id"] for d in available if d["is_active"]), available[0]["id"]
+        raise HTTPException(
+            status_code=503,
+            detail="No device selected. Choose a device first.",
         )
-
-    try:
+    with _spotify_op():
         sp.start_playback(device_id=device_id, uris=[f"spotify:track:{track_id}"])
-    except SpotifyException as e:
-        if e.http_status == 403:
-            raise HTTPException(status_code=403, detail="Spotify Premium required.")
-        raise
 
 
 def pause_track(sp: spotipy.Spotify) -> None:
     """Pause playback on the active Spotify device."""
-    try:
+    with _spotify_op():
         sp.pause_playback()
-    except SpotifyException as e:
-        if e.http_status == 403:
-            raise HTTPException(status_code=403, detail="Spotify Premium required.")
-        raise
 
 
 def resume_track(sp: spotipy.Spotify) -> None:
     """Resume playback on the active Spotify device."""
-    try:
+    with _spotify_op():
         sp.start_playback()
-    except SpotifyException as e:
-        if e.http_status == 403:
-            raise HTTPException(status_code=403, detail="Spotify Premium required.")
-        raise
