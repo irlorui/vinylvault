@@ -12,30 +12,15 @@ Built with **FastAPI** + **spotipy** on the backend and plain HTML/CSS/JS on the
 
 ## 🛠️ Setup
 
-### 1. Get your Spotify credentials
+### 1. Configurate your Spotify app
 
-Go to [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard), create an app, and grab your **Client ID** and **Client Secret**.
+To run Vinyl Vault you need to set up an app in [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard). This is completely free but requires a Spotify Premium account.
 
-In your app settings, add this redirect URI:
-```
-https://localhost:8888/callback
-```
+Full How-to guide is available at [docs/how_to_setup_spotify_app.md](docs/how_to_setup_spotify_app.md).
 
-### 2. Configure your environment
+> **Note:** playback requires Spotify Premium and an active device (desktop app, phone, etc.).
 
-Copy `.config/.env.example` to `.config/.env` and fill it in:
-
-```env
-SPOTIPY_CLIENT_ID=your_client_id_here
-SPOTIPY_CLIENT_SECRET=your_client_secret_here
-SPOTIPY_REDIRECT_URI=https://localhost:8888/callback
-PLAYLIST_ID=your_playlist_id_here
-```
-
-Your `PLAYLIST_ID` is the string in a Spotify playlist URL:
-`https://open.spotify.com/playlist/`**`AAAAABBBBCCCC12345`**
-
-### 3. Install dependencies
+### 2. Install dependencies
 
 You need [uv](https://docs.astral.sh/uv/getting-started/installation/) installed.
 
@@ -43,7 +28,7 @@ You need [uv](https://docs.astral.sh/uv/getting-started/installation/) installed
 make setup
 ```
 
-### 4. Run the app
+### 3. Run the app
 
 ```bash
 make run
@@ -51,7 +36,7 @@ make run
 
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser. On first run, Spotify will open a browser tab asking you to authorise the app — follow the prompt and you're good to go.
 
-> **Note:** playback requires Spotify Premium and an active device (desktop app, phone, etc.).
+> **Note:** Remember to be logged in either in Web browser or Spotify Desktop in at least one of your devices.
 
 ---
 
@@ -62,7 +47,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser. On first ru
 3. Click **REVEAL** — if your placement is chronologically correct the card stays; if not, it disappears.
 4. Reach **4 correct cards** (including the reference) and you win! 🏆
 
-Full rules and a game-flow diagram are in [docs/game-mechanics.md](docs/game-mechanics.md).
+Full rules and a game-flow diagram are in [docs/game_rules.md](docs/game_rules.md).
 
 ---
 
@@ -78,29 +63,78 @@ src/
     main.py       # FastAPI app + static file serving
   frontend/
     index.html / script.js / styles.css
-docs/
-  game-mechanics.md   # game rules and flow diagrams
+docs/             # documentation on project
 ```
 
-**API endpoints:**
+**API endpoints** — full reference in [docs/api.md](docs/api.md):
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET`  | `/api/song` | Random track from the playlist |
-| `GET`  | `/api/reference-year` | Random anchor year (1950 – now) |
-| `POST` | `/api/play/{track_id}` | Start playback on the active device |
+| `GET`  | `/api/reference-year` | Random anchor year (1960 – now) |
+| `POST` | `/api/score/reset` | Reset score to 1 (new game) |
+| `POST` | `/api/score/add` | Add a point → `{score, won}` |
+| `GET`  | `/api/song` | Random track from the cached playlist |
+| `GET`  | `/api/devices` | List available Spotify devices |
+| `PUT`  | `/api/device/{device_id}` | Pin a device for playback |
+| `POST` | `/api/play/{track_id}` | Start playback on the pinned device |
 | `POST` | `/api/pause` | Pause playback |
 | `POST` | `/api/resume` | Resume playback |
-| `POST` | `/api/score/reset` | Reset score to 1 (new game) |
-| `POST` | `/api/score/add` | Add a point and return `{score, won}` |
 
 ---
 
-## 🧑‍💻 Development
+## 🧑‍💻 Contributing
+
+### Before you push
+
+Run the full pre-commit suite and make sure everything passes:
 
 ```bash
-make pre-commit   # run pre-commit hooks + ruff lint + format check
-make ruff-format  # auto-format code with ruff
+make pre-commit   # pre-commit hooks + ruff lint + ruff format check
+make ruff-format  # auto-format code (run this if format check fails)
 ```
 
-Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
+### Commit messages
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) and [Semantic Release](https://semantic-release.gitbook.io/) to automate versioning and changelogs. Your commit message type determines the next version number — use the right type:
+
+| Type | When to use | Version bump |
+|------|-------------|--------------|
+| `feat` | New feature visible to users | minor (`1.1.0`) |
+| `fix` | Bug fix | patch (`1.0.1`) |
+| `feat!` / `fix!` | Breaking change (add `!` or `BREAKING CHANGE:` footer) | major (`2.0.0`) |
+| `docs` | Documentation only | none |
+| `refactor` | Code change with no behaviour change | none |
+| `chore` | Tooling, deps, config | none |
+
+**Format:**
+```
+<type>(<optional scope>): <short description>
+
+[optional body]
+
+[optional footer]
+```
+
+**Examples:**
+```
+feat(api): add /api/devices endpoint for Spotify device selection
+
+fix(frontend): prevent score pips from showing in idle phase
+
+docs: add Spotify app setup guide to docs/
+
+feat!: require device selection before starting game
+
+BREAKING CHANGE: /api/play now returns 503 if no device is pinned
+```
+
+### Opening a pull request
+
+1. Create a branch from `main` with a descriptive release name `release/v{semantic_release_version}`:
+   ```bash
+   git checkout -b feat/my-release-branch
+   ```
+2. Make your changes, run `make pre-commit`, and commit using the format above.
+3. Push your branch and open a PR against `main`.
+4. Wait for a review before merging. At least one approval is required. Address any comments and push additional commits to the same branch (do not force-push after review starts).
+5. Merge via **Squash and merge** to keep the history clean.
