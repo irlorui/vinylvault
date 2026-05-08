@@ -30,6 +30,9 @@
 
     <div id="game-screen" class="hidden">
       <div id="score-display"></div>
+      <div id="wildcard-display" class="hidden">
+        Wildcards: <span id="wildcard-count">0</span>
+      </div>
 
       <div id="timeline-container">
         <div id="timeline"></div>
@@ -43,10 +46,12 @@
 
         <div id="song-controls" class="hidden">
           <button id="btn-play-pause">&#9654; PLAY</button>
-          <button id="btn-reveal" disabled>REVEAL</button>
+          <button id="btn-skip" class="hidden" disabled>SKIP</button>
+          <button id="btn-reveal" disabled title="Reveal the song year and check your placement">REVEAL</button>
         </div>
 
         <button id="btn-new-song" class="hidden">NEW SONG</button>
+        <button id="btn-add-wildcard" class="hidden" title="Award a wildcard for correctly naming the song title and artist">ADD WILDCARD</button>
       </div>
     </div>
 

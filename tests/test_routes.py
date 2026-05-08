@@ -176,3 +176,47 @@ def test_resume_returns_403_on_premium_error(client, mock_sp):
     )
     res = client.post("/api/resume")
     assert res.status_code == 403
+
+
+# ─── POST /api/wildcard/reset ────────────────────────────────────────────────
+
+
+def test_wildcard_reset_returns_zero(client):
+    client.app.state.wildcards.add()
+    res = client.post("/api/wildcard/reset")
+    assert res.status_code == 200
+    assert res.json()["wildcards"] == 0
+
+
+# ─── POST /api/wildcard/add ──────────────────────────────────────────────────
+
+
+def test_wildcard_add_returns_one(client):
+    client.post("/api/wildcard/reset")
+    res = client.post("/api/wildcard/add")
+    assert res.status_code == 200
+    assert res.json()["wildcards"] == 1
+
+
+def test_wildcard_add_increments(client):
+    client.post("/api/wildcard/reset")
+    client.post("/api/wildcard/add")
+    res = client.post("/api/wildcard/add")
+    assert res.json()["wildcards"] == 2
+
+
+# ─── POST /api/wildcard/use ──────────────────────────────────────────────────
+
+
+def test_wildcard_use_decrements(client):
+    client.post("/api/wildcard/reset")
+    client.post("/api/wildcard/add")
+    res = client.post("/api/wildcard/use")
+    assert res.status_code == 200
+    assert res.json()["wildcards"] == 0
+
+
+def test_wildcard_use_returns_409_when_empty(client):
+    client.post("/api/wildcard/reset")
+    res = client.post("/api/wildcard/use")
+    assert res.status_code == 409

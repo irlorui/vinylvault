@@ -4,7 +4,7 @@ import random
 from contextlib import asynccontextmanager
 from datetime import datetime
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
@@ -14,8 +14,9 @@ from src.backend.models import (
     ReferenceYearResponse,
     ScoreResponse,
     TrackResponse,
+    WildcardResponse,
 )
-from src.backend.score import GameScore
+from src.backend.score import GameScore, GameWildcard
 from src.backend.spotify import (
     fetch_all_tracks,
     get_devices,
@@ -38,6 +39,7 @@ async def lifespan(app: FastAPI):
         fetch_all_tracks, app.state.sp, settings.playlist_id
     )
     app.state.score = GameScore()
+    app.state.wildcards = GameWildcard()
     app.state.device_id = None
     yield
 
@@ -47,6 +49,10 @@ app = FastAPI(title="VinylVault", lifespan=lifespan)
 
 def _score_response(score: GameScore) -> ScoreResponse:
     return ScoreResponse(score=score.value, won=score.won)
+
+
+def _wildcard_response(wc: GameWildcard) -> WildcardResponse:
+    return WildcardResponse(wildcards=wc.value)
 
 
 @app.get("/api/reference-year", response_model=ReferenceYearResponse)
@@ -105,6 +111,30 @@ async def pause_song(request: Request) -> None:
 async def resume_song(request: Request) -> None:
     """Resume playback on the active Spotify device."""
     await run_in_threadpool(resume_track, request.app.state.sp)
+
+
+@app.post("/api/wildcard/reset", response_model=WildcardResponse)
+async def reset_wildcards(request: Request) -> WildcardResponse:
+    """Reset wildcard count to 0 at game start."""
+    request.app.state.wildcards.reset()
+    return _wildcard_response(request.app.state.wildcards)
+
+
+@app.post("/api/wildcard/add", response_model=WildcardResponse)
+async def add_wildcard(request: Request) -> WildcardResponse:
+    """Award one wildcard after a correct song name guess."""
+    request.app.state.wildcards.add()
+    return _wildcard_response(request.app.state.wildcards)
+
+
+@app.post("/api/wildcard/use", response_model=WildcardResponse)
+async def use_wildcard(request: Request) -> WildcardResponse:
+    """Spend one wildcard to skip the current song."""
+    try:
+        request.app.state.wildcards.use()
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    return _wildcard_response(request.app.state.wildcards)
 
 
 app.mount("/", StaticFiles(directory="src/frontend", html=True), name="frontend")

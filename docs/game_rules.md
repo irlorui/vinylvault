@@ -18,21 +18,6 @@ Click **NEW SONG** to draw a card. The song starts playing from Spotify and a fa
 card appears in your staging area. You can toggle **PLAY / PAUSE** as many times as you
 want before committing.
 
-```
-─── TIMELINE ───────────────────────────────
-  ┌──────────┐
-  │   1978   │
-  │   REF    │
-  └──────────┘
-────────────────────────────────────────────
-
-         ┌──────────┐
-         │    ?     │  ← staging card (drag me!)
-         │  ~~~~~~  │
-         └──────────┘
-
-         [▶ PLAY]  [REVEAL]
-```
 
 ![VinylVault game screen](images/game_mechanism.png)
 
@@ -56,7 +41,39 @@ the position you chose.
   - 🟢 Correct. The card flips, and stays in the timeline. You just scored a point!
   - 🔴 Wrong. The card shakes red and disappears and your score remains the same. 
 
-Wheter you were right or made a mistake, click **NEW SONG** and try again with the next track.
+Whether you were right or made a mistake, click **NEW SONG** and try again with the next track.
+
+---
+
+## 🃏 Wildcards
+
+Wildcards are bonus tokens you can earn — and spend — to shake things up.
+
+### Earning a wildcard
+
+Before clicking **REVEAL**, any player can shout out the song's title **and** artist.
+If they got it right, after the reveal click **ADD WILDCARD** to bank one token.
+The button disappears as soon as you draw the next song, so don't forget!
+
+```
+  [▶ PLAY]  [SKIP]  [REVEAL]   ← SKIP lights up once you have wildcards
+
+  [NEW SONG]  [ADD WILDCARD]   ← ADD WILDCARD appears right after REVEAL
+```
+
+### Spending a wildcard
+
+Not feeling a song? Click **SKIP** to burn one wildcard and immediately draw a fresh track.
+The button is right there next to PLAY — no need to place the card first.
+SKIP is greyed out when your wildcard count is zero, so you always know where you stand.
+
+```
+  Wildcards: 2   ← counter shown during the game
+```
+
+> 💡 Wildcards carry over between rounds — stock up on easy songs and spend them on the tricky ones!
+
+---
 
 ## 🔄 Full game flow
 
@@ -72,12 +89,14 @@ Wheter you were right or made a mistake, click **NEW SONG** and try again with t
     └────────┬─────────┘
              │ click NEW SONG
              ▼
-    ┌──────────────────┐
-    │  song card drawn │  (face-down, draggable)
-    │  PLAY / PAUSE    │
-    └────────┬─────────┘
-             │ drag to timeline
-             ▼
+    ┌──────────────────────────────┐
+    │  song card drawn             │  (face-down, draggable)
+    │  PLAY / PAUSE / SKIP         │  SKIP available if wildcards > 0
+    └──────┬──────────────┬────────┘
+           │              │ click SKIP (uses 1 wildcard)
+           │              └──────────► draw new song
+           │ drag to timeline
+           ▼
     ┌──────────────────┐
     │  card placed     │  REVEAL enabled
     │  (re-drag to     │  PLAY / PAUSE still works
@@ -94,6 +113,7 @@ Wheter you were right or made a mistake, click **NEW SONG** and try again with t
   score + 1
          │              │
          └──────┬────────┘
+                │  (named the song? → ADD WILDCARD)
                 ▼
          score = WIN?
           ┌────┴────┐
@@ -119,3 +139,5 @@ Hit **PLAY AGAIN** to start fresh with a new reference year and a clean timeline
 - 🔍 **Listen for clues** — production style, instrumentation, and vocal tone all hint at the era.
 - ❓ **Re-drag before you commit** — you can move the card as many times as you want before clicking REVEAL.
 - 🎶 **Keep the music going** — the song keeps playing after a correct reveal, so you can enjoy it while you line up your next pick.
+- 🃏 **Call it out loud** — wildcards only land if someone names both the title *and* the artist before REVEAL. No silent victories!
+- 💸 **Save wildcards for nightmares** — that one obscure B-side from 1973 is coming. You'll want the escape hatch ready.

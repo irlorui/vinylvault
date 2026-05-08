@@ -31,3 +31,9 @@ class DeviceResponse(BaseModel):
     device_id: str
     name: str
     is_active: bool
+
+
+class WildcardResponse(BaseModel):
+    """Current wildcard count for the active game session."""
+
+    wildcards: int

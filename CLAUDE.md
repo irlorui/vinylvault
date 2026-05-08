@@ -66,6 +66,9 @@ docs/
 | `POST` | `/api/resume` | Resume playback |
 | `POST` | `/api/score/reset` | Reset score to 1 (reference card) → `ScoreResponse` |
 | `POST` | `/api/score/add` | Add 1 point → `ScoreResponse(score, won)` |
+| `POST` | `/api/wildcard/reset` | Reset wildcard count to 0 → `WildcardResponse` |
+| `POST` | `/api/wildcard/add` | Award 1 wildcard → `WildcardResponse` |
+| `POST` | `/api/wildcard/use` | Spend 1 wildcard → `WildcardResponse` (409 if none) |
 
 ## Game state machine (frontend)
 

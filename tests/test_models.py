@@ -7,6 +7,7 @@ from src.backend.models import (
     ReferenceYearResponse,
     ScoreResponse,
     TrackResponse,
+    WildcardResponse,
 )
 
 
@@ -56,3 +57,9 @@ def test_device_response_inactive():
 def test_track_response_invalid_type():
     with pytest.raises(Exception):
         TrackResponse(track_id=123, name=None, artist="A", year="2000")
+
+
+def test_wildcard_response_fields():
+    wc = WildcardResponse(wildcards=3)
+    assert wc.wildcards == 3
+    assert wc.model_dump() == {"wildcards": 3}

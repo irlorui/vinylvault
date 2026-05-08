@@ -1,6 +1,6 @@
-"""Unit tests for GameScore."""
+"""Unit tests for GameScore and GameWildcard."""
 
-from src.backend.score import WIN_SCORE, GameScore
+from src.backend.score import WIN_SCORE, GameScore, GameWildcard
 
 
 def test_win_score_constant():
@@ -65,3 +65,43 @@ def test_reset_after_add():
     score.reset()
     assert score.value == 1
     assert score.won is False
+
+
+# ─── GameWildcard ─────────────────────────────────────────────────────────────
+
+
+def test_wildcard_initial_value():
+    wc = GameWildcard()
+    assert wc.value == 0
+
+
+def test_wildcard_add_increments():
+    wc = GameWildcard()
+    wc.add()
+    assert wc.value == 1
+    wc.add()
+    assert wc.value == 2
+
+
+def test_wildcard_use_decrements():
+    wc = GameWildcard()
+    wc.add()
+    wc.use()
+    assert wc.value == 0
+
+
+def test_wildcard_use_raises_when_empty():
+    wc = GameWildcard()
+    try:
+        wc.use()
+        assert False, "Expected ValueError"
+    except ValueError:
+        pass
+
+
+def test_wildcard_reset_clears_value():
+    wc = GameWildcard()
+    wc.add()
+    wc.add()
+    wc.reset()
+    assert wc.value == 0
