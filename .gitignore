@@ -4,3 +4,6 @@ CODEOWNERS
 .config/.cache
 **/__pycache__/
 .ruff_cache/
+.coverage
+htmlcov/
+.pytest_cache/

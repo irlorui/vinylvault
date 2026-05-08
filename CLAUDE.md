@@ -9,6 +9,13 @@ make setup        # create venv and install all dependencies (uv venv && uv sync
 make run          # start the FastAPI dev server with hot-reload
 make pre-commit   # run pre-commit hooks + ruff lint + ruff format check
 make ruff-format  # auto-format code with ruff
+make test         # run full test suite (pytest -v)
+make test-cov     # run tests with coverage report (--cov=src/backend)
+```
+
+Run a single test:
+```bash
+uv run pytest tests/test_routes.py::test_get_song_returns_track -v
 ```
 
 Run lint and format individually:
@@ -29,7 +36,8 @@ src/
     models.py     # Pydantic response models: TrackResponse, ReferenceYearResponse, ScoreResponse, DeviceResponse
     score.py      # GameScore class: reset(), add(), won property; WIN_SCORE constant
     spotify.py    # spotipy client factory, fetch_all_tracks (paginated), get_random_track(tracks),
-                  # play_track, pause_track, resume_track (all via _spotify_op context manager)
+                  # get_devices, play_track, pause_track, resume_track;
+                  # _spotify_op context manager wraps playback calls (converts 403 → HTTPException)
     main.py       # FastAPI app: lifespan initializes sp + tracks + score + device_id on app.state;
                   # all API routes + static mount; _score_response() helper; _CURRENT_YEAR constant
   frontend/
