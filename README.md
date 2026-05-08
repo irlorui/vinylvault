@@ -58,7 +58,7 @@ src/
   backend/
     config.py     # loads .config/.env credentials
     models.py     # Pydantic response models (TrackResponse, ScoreResponse, …)
-    score.py      # GameScore class — tracks points and win condition
+    score.py      # GameScore and GameWildcard classes
     spotify.py    # spotipy client, get_random_track, play/pause/resume
     main.py       # FastAPI app + static file serving
   frontend/
@@ -79,6 +79,9 @@ docs/             # documentation on project
 | `POST` | `/api/play/{track_id}` | Start playback on the pinned device |
 | `POST` | `/api/pause` | Pause playback |
 | `POST` | `/api/resume` | Resume playback |
+| `POST` | `/api/wildcard/reset` | Reset wildcard count (new game) |
+| `POST` | `/api/wildcard/add` | Award 1 wildcard |
+| `POST` | `/api/wildcard/use` | Spend 1 wildcard → 409 if empty |
 
 ---
 
