@@ -1,4 +1,4 @@
-.PHONY: setup pre-commit run ruff-format
+.PHONY: setup pre-commit run ruff-format test test-cov
 
 setup:
 	uv sync
@@ -12,3 +12,9 @@ pre-commit:
 
 ruff-format:
 	uv run ruff format .
+
+test:
+	uv run pytest -v
+
+test-cov:
+	uv run pytest --cov=src/backend --cov-report=term-missing
