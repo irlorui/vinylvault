@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VinylVault</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main>
+    <h1>Vinyl Vault</h1>
+
+    <div id="start-screen">
+      <button id="btn-start" disabled>START</button>
+      <div id="device-selector">
+        <select id="device-select">
+          <option value="">Loading devices…</option>
+        </select>
+        <button id="btn-refresh-devices" title="Refresh devices">↻</button>
+      </div>
+    </div>
+
+    <div id="win-screen" class="hidden">
+      <div id="win-card">
+        <p class="win-title">Congratulations!</p>
+        <p class="win-subtitle">You won!</p>
+        <button id="btn-play-again">PLAY AGAIN</button>
+      </div>
+    </div>
+
+    <div id="game-screen" class="hidden">
+      <div id="score-display"></div>
+      <div id="wildcard-display" class="hidden">
+        Wildcards: <span id="wildcard-count">0</span>
+      </div>
+
+      <div id="timeline-container">
+        <div id="timeline"></div>
+      </div>
+
+      <div id="staging-area">
+        <div id="current-card" class="hidden" draggable="false">
+          <span class="mystery">?</span>
+          <span class="drag-hint">drag to timeline</span>
+        </div>
+
+        <div id="song-controls" class="hidden">
+          <button id="btn-play-pause">&#9654; PLAY</button>
+          <button id="btn-skip" class="hidden" disabled>SKIP</button>
+          <button id="btn-reveal" disabled title="Reveal the song year and check your placement">REVEAL</button>
+        </div>
+
+        <button id="btn-new-song" class="hidden">NEW SONG</button>
+        <button id="btn-add-wildcard" class="hidden" title="Award a wildcard for correctly naming the song title and artist">ADD WILDCARD</button>
+      </div>
+    </div>
+
+    <p id="error-msg" class="error hidden"></p>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

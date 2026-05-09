@@ -1,0 +1,19 @@
+# See https://pre-commit.com/ for usage and config
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace        
+        stages: [manual]
+      - id: check-yaml
+        stages: [manual]
+      - id: end-of-file-fixer
+        stages: [manual]
+      - id: mixed-line-ending
+        stages: [manual]
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.2.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]

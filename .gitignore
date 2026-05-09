@@ -1,2 +1,10 @@
 .env
+.venv
 CODEOWNERS
+.config/.cache
+**/__pycache__/
+.ruff_cache/
+.coverage
+htmlcov/
+.pytest_cache/
+.DS_Store
