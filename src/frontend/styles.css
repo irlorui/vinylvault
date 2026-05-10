@@ -266,17 +266,13 @@ button:disabled { opacity: 0.3; cursor: default; }
   border-color: #b4ff00;
 }
 
-/* ─── Win overlay ─────────────────────────────────────────────────────────── */
+/* ─── Win card ────────────────────────────────────────────────────────────── */
 
 #win-screen {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.88);
   display: flex;
-  align-items: center;
   justify-content: center;
+  width: 100%;
   animation: fade-in 0.5s ease;
-  z-index: 10;
 }
 
 #win-card {
@@ -375,8 +371,8 @@ button:disabled { opacity: 0.3; cursor: default; }
 .placed-card-4 { background: #f5820d; color: #111; }    /* orange */
 .placed-card-5 { background: #00bcd4; color: #111; }    /* cyan */
 .placed-card-6 { background: #d81b60; color: #fdf8ee; } /* magenta */
-.placed-card-7 { background: #c48b99; color: #111; }    /* dusty rose */
-.placed-card-8 { background: #009688; color: #111; }    /* teal */
+.placed-card-7 { background: #C8943C; color: #fdf8ee; } /* harvest goal */
+.placed-card-8 { background: #7BB2D9; color: #111; }    /* sky reflection */
 .placed-card-9 { background: #f9c74f; color: #111; }    /* yellow */
 
 .pending-card {

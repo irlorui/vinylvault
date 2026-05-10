@@ -10,6 +10,7 @@ const game = {
   score: 0,
   wildcards: 0,
   showAddWildcard: false,
+  colorPool: [],
 };
 
 // DOM refs
@@ -23,6 +24,7 @@ const btnPlayPause = document.getElementById('btn-play-pause');
 const btnReveal = document.getElementById('btn-reveal');
 const btnSkip = document.getElementById('btn-skip');
 const btnAddWildcard = document.getElementById('btn-add-wildcard');
+const stagingArea = document.getElementById('staging-area');
 const errorMsg = document.getElementById('error-msg');
 const scoreDisplay = document.getElementById('score-display');
 const wildcardDisplay = document.getElementById('wildcard-display');
@@ -49,6 +51,7 @@ document.getElementById('btn-start').addEventListener('click', async () => {
     game.score = score;
     game.wildcards = wildcards;
     game.showAddWildcard = false;
+    game.colorPool = shuffledColors();
     game.timeline = [{ year, isReference: true, name: null, artist: null, track_id: null }];
 
     startScreen.classList.add('hidden');
@@ -128,7 +131,7 @@ btnReveal.addEventListener('click', async () => {
       artist: game.currentTrack.artist,
       track_id: game.currentTrack.track_id,
       isReference: false,
-      colorIndex: Math.floor(Math.random() * 10),
+      colorIndex: game.colorPool.shift() ?? Math.floor(Math.random() * 10),
     });
     game.currentTrack = null;
     game.placedAtIndex = null;
@@ -171,6 +174,7 @@ function resetGame() {
   game.score = 0;
   game.wildcards = 0;
   game.showAddWildcard = false;
+  game.colorPool = [];
   game.playState = 'idle';
   btnPlayPause.textContent = '▶ PLAY';
   gameScreen.classList.add('hidden');
@@ -245,6 +249,8 @@ currentCard.addEventListener('dragend', () => {
 });
 
 // ─── Render ────────────────────────────────────────────────────────────────
+
+function shuffledColors() { return [...Array(10).keys()].sort(() => Math.random() - 0.5); }
 
 function render() {
   renderTimeline();
@@ -373,6 +379,7 @@ function updateUI() {
 
   wildcardDisplay.classList.toggle('hidden', phase === 'idle');
   btnReset.classList.toggle('hidden', phase === 'idle' || phase === 'won');
+  stagingArea.classList.toggle('hidden', phase === 'won');
 
   btnSkip.classList.toggle('hidden', !hasSong || phase === 'wrong');
   btnSkip.disabled = game.wildcards < 1;
