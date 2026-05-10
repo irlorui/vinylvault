@@ -29,6 +29,7 @@ const wildcardDisplay = document.getElementById('wildcard-display');
 const wildcardCount = document.getElementById('wildcard-count');
 const winScreen = document.getElementById('win-screen');
 const deviceSelector = document.getElementById('device-selector');
+const btnReset = document.getElementById('btn-reset');
 
 // START
 document.getElementById('btn-start').addEventListener('click', async () => {
@@ -127,6 +128,7 @@ btnReveal.addEventListener('click', async () => {
       artist: game.currentTrack.artist,
       track_id: game.currentTrack.track_id,
       isReference: false,
+      colorIndex: Math.floor(Math.random() * 10),
     });
     game.currentTrack = null;
     game.placedAtIndex = null;
@@ -142,6 +144,7 @@ btnReveal.addEventListener('click', async () => {
         game.playState = 'idle';
       }
       game.phase = 'won';
+      document.getElementById('win-score-stat').textContent = `${game.score} / ${WIN_SCORE}`;
     } else {
       game.showAddWildcard = true;
       game.phase = 'started';
@@ -160,8 +163,7 @@ btnReveal.addEventListener('click', async () => {
   }
 });
 
-// PLAY AGAIN
-document.getElementById('btn-play-again').addEventListener('click', () => {
+function resetGame() {
   game.phase = 'idle';
   game.timeline = [];
   game.currentTrack = null;
@@ -177,7 +179,13 @@ document.getElementById('btn-play-again').addEventListener('click', () => {
   deviceSelector.classList.remove('hidden');
   const selectedDevice = document.getElementById('device-select').value;
   document.getElementById('btn-start').disabled = !selectedDevice;
-});
+}
+
+// PLAY AGAIN
+document.getElementById('btn-play-again').addEventListener('click', resetGame);
+
+// RESET
+btnReset.addEventListener('click', resetGame);
 
 // SKIP
 btnSkip.addEventListener('click', async () => {
@@ -297,7 +305,8 @@ function makeDropZone(index) {
 
 function makeTimelineCard(card) {
   const el = document.createElement('div');
-  el.className = 'timeline-card ' + (card.isReference ? 'ref-card' : 'placed-card');
+  const colorClass = card.isReference ? 'ref-card' : `placed-card placed-card-${card.colorIndex}`;
+  el.className = 'timeline-card ' + colorClass;
 
   const yearEl = document.createElement('div');
   yearEl.className = 'tc-year';
@@ -305,10 +314,14 @@ function makeTimelineCard(card) {
   el.appendChild(yearEl);
 
   if (card.isReference) {
-    const labelEl = document.createElement('div');
-    labelEl.className = 'tc-label';
-    labelEl.textContent = 'REF';
-    el.appendChild(labelEl);
+    const refEl = document.createElement('div');
+    refEl.className = 'tc-label';
+    refEl.textContent = 'REF';
+    el.insertBefore(refEl, yearEl);
+    const anchorEl = document.createElement('div');
+    anchorEl.className = 'tc-label';
+    anchorEl.textContent = 'ANCHOR';
+    el.appendChild(anchorEl);
   } else {
     const nameEl = document.createElement('div');
     nameEl.className = 'tc-name';
@@ -359,6 +372,7 @@ function updateUI() {
   deviceSelector.classList.toggle('hidden', phase !== 'idle');
 
   wildcardDisplay.classList.toggle('hidden', phase === 'idle');
+  btnReset.classList.toggle('hidden', phase === 'idle' || phase === 'won');
 
   btnSkip.classList.toggle('hidden', !hasSong || phase === 'wrong');
   btnSkip.disabled = game.wildcards < 1;

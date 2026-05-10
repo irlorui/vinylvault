@@ -4,34 +4,55 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VinylVault</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <main>
-    <h1>Vinyl Vault</h1>
+    <div id="app-logo">
+      <img src="assets/vinyl-mark.svg" alt="" class="logo-mark"><span class="logo-vinyl">VINYL</span><span class="logo-vault">VAULT</span>
+    </div>
 
     <div id="start-screen">
-      <button id="btn-start" disabled>START</button>
+      <div class="hero">
+        <p class="hero-top">CREATE YOUR</p>
+        <p class="hero-bottom">VINYL TIMELINE</p>
+      </div>
+      <p class="hero-subtitle">Listen to a random tracks from a Spotify playlist and place them on a growing timeline.</p>
       <div id="device-selector">
         <select id="device-select">
           <option value="">Loading devices…</option>
         </select>
         <button id="btn-refresh-devices" title="Refresh devices">↻</button>
       </div>
+      <p id="start-hint">PICK A DEVICE TO BEGIN</p>
+      <button id="btn-start" disabled>START</button>
     </div>
 
     <div id="win-screen" class="hidden">
       <div id="win-card">
-        <p class="win-title">Congratulations!</p>
-        <p class="win-subtitle">You won!</p>
+        <img src="assets/vinyl-mark.svg" alt="" class="win-vinyl">
+        <p class="win-eyebrow">YOU WON</p>
+        <p class="win-title">CONGRATULATIONS!</p>
+        <p class="win-stat"><span id="win-score-stat"></span> NAILED</p>
         <button id="btn-play-again">PLAY AGAIN</button>
       </div>
     </div>
 
     <div id="game-screen" class="hidden">
-      <div id="score-display"></div>
-      <div id="wildcard-display" class="hidden">
-        Wildcards: <span id="wildcard-count">0</span>
+      <div id="game-topbar">
+        <div id="score-area">
+          <p class="score-label">SCORE</p>
+          <div id="score-display"></div>
+        </div>
+        <div id="game-topbar-right">
+          <div id="wildcard-display" class="hidden">
+            <span class="wc-icon">✦</span> WILDCARDS · <span id="wildcard-count">0</span>
+          </div>
+          <button id="btn-reset" class="hidden">RESET</button>
+        </div>
       </div>
 
       <div id="timeline-container">
@@ -39,19 +60,20 @@
       </div>
 
       <div id="staging-area">
-        <div id="current-card" class="hidden" draggable="false">
-          <span class="mystery">?</span>
-          <span class="drag-hint">drag to timeline</span>
-        </div>
-
         <div id="song-controls" class="hidden">
           <button id="btn-play-pause">&#9654; PLAY</button>
           <button id="btn-skip" class="hidden" disabled>SKIP</button>
           <button id="btn-reveal" disabled title="Reveal the song year and check your placement">REVEAL</button>
         </div>
-
-        <button id="btn-new-song" class="hidden">NEW SONG</button>
-        <button id="btn-add-wildcard" class="hidden" title="Award a wildcard for correctly naming the song title and artist">ADD WILDCARD</button>
+        
+        <div id="current-card" class="hidden" draggable="false">
+          <span class="mystery">?</span>
+          <span class="drag-hint">drag to timeline</span>
+        </div>
+        <div id="action-buttons">
+          <button id="btn-new-song" class="hidden">NEW SONG</button>
+          <button id="btn-add-wildcard" class="hidden" title="Award a wildcard for correctly naming the song title and artist">ADD WILDCARD</button>
+        </div>
       </div>
     </div>
 

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" width="220" height="220">
+  <defs>
+    <radialGradient id="vinyl" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0A0A0A"></stop>
+      <stop offset="55%" stop-color="#161616"></stop>
+      <stop offset="100%" stop-color="#0A0A0A"></stop>
+    </radialGradient>
+  </defs>
+  
+  <circle cx="116" cy="116" r="94" fill="#FF2E93"></circle>
+  
+  <circle cx="104" cy="104" r="94" fill="#FFF1E0"></circle>
+  
+  <g transform="translate(104,104)">
+    <circle r="78" fill="url(#vinyl)"></circle>
+    <g fill="none" stroke="#1f1f1f" stroke-width="0.6">
+      <circle r="74"></circle>
+      <circle r="66"></circle>
+      <circle r="58"></circle>
+      <circle r="50"></circle>
+      <circle r="42"></circle>
+      <circle r="34"></circle>
+    </g>
+    
+    <circle r="28" fill="#FF2E93"></circle>
+    <circle r="5" fill="#0A0A0A"></circle>
+    <circle r="1.2" fill="#FFF1E0"></circle>
+  </g>
+</svg>
