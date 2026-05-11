@@ -21,37 +21,59 @@ All endpoints return JSON unless the response is `204 No Content`. Error bodies 
 
 ---
 
-### POST /api/score/reset
+### POST /api/players/init
 
-**Description:** Resets the session score to 1. The reference card counts as the first point, so a fresh game always starts at 1.
+**Description:** Initialises all players for a new game. Resets every player's score to 1 (the reference card counts as the first point) and wildcards to 0. Sets the current player to index 0.
 
-**Response:** `200` — `ScoreResponse`
+**Request body:** `InitPlayersRequest`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `names` | `list[str]` | Player names, 1–4 entries required |
+
+**Response:** `200` — `PlayersResponse`
 
 #### Response body
 | Field | Type | Description |
 |-------|------|-------------|
-| `score` | `int` | Current score (always `1` after reset) |
-| `won` | `bool` | Whether the win threshold has been reached (always `false` after reset) |
+| `players` | `list[PlayerState]` | All players in order; see schema below |
+| `current_player_index` | `int` | Index into `players` of the player whose turn it is (always `0` after init) |
+
+**`PlayerState` schema**
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | `str` | Player name |
+| `score` | `int` | Current score |
+| `wildcards` | `int` | Available wildcards |
+
+#### Errors
+| Status | Meaning |
+|--------|---------|
+| `422` | `names` list is empty or has more than 4 entries |
+
+---
+
+### POST /api/turn/next
+
+**Description:** Advances to the next player's turn, wrapping around to the first player after the last.
+
+**Response:** `200` — `PlayersResponse` (see schema above)
 
 ---
 
 ### POST /api/score/add
 
-**Description:** Adds one point for a correct card placement and returns the updated score. Sets `won` to `true` when `score` reaches `WIN_SCORE`.
+**Description:** Adds one point to the current player's score and returns the updated state for all players.
 
-**Response:** `200` — `ScoreResponse`
-
-#### Response body
-| Field | Type | Description |
-|-------|------|-------------|
-| `score` | `int` | Updated score |
-| `won` | `bool` | `true` if `score >= WIN_SCORE` (see [Game constants](#game-constants)) |
+**Response:** `200` — `PlayersResponse` (see schema above)
 
 ---
 
 ### GET /api/song
 
-**Description:** Returns a random track from the playlist that was loaded at startup. The track list is cached in memory — no Spotify API call is made per request.
+**Description:** Returns a random track from the playlist cached at startup. Tracks with malformed Spotify metadata (missing artists, invalid release date, `null` album) are automatically skipped. No Spotify API call is made per request.
+
+**Query parameter:** `exclude` — comma-separated Spotify track IDs to exclude (e.g. `?exclude=id1,id2`). Used to prevent the same track from appearing twice in one player's timeline.
 
 **Response:** `200` — `TrackResponse`
 
@@ -66,7 +88,7 @@ All endpoints return JSON unless the response is `204 No Content`. Error bodies 
 #### Errors
 | Status | Meaning |
 |--------|---------|
-| `404` | Playlist contains no playable tracks |
+| `404` | No playable tracks remain after applying the exclude filter and skipping malformed entries |
 
 ---
 
@@ -97,7 +119,7 @@ All endpoints return JSON unless the response is `204 No Content`. Error bodies 
 
 ### POST /api/play/{track_id}
 
-**Description:** Starts playback of the given track on the pinned device. A device must have been pinned via `PUT /api/device/{device_id}` first.
+**Description:** Starts playback of the given track on the pinned device.
 
 **Path parameter:** `track_id` — Spotify track ID (from `GET /api/song`)
 
@@ -137,10 +159,27 @@ All endpoints return JSON unless the response is `204 No Content`. Error bodies 
 
 ---
 
-## Game constants
+### POST /api/wildcard/add
 
-| Constant | Value | Effect |
-|----------|-------|--------|
-| `WIN_SCORE` | `4` | `POST /api/score/add` returns `won: true` when `score >= 4`. Defined in `src/backend/score.py`. |
+**Description:** Awards one wildcard to the current player. Called after a correct song-name guess during the REVEAL phase.
 
-The score starts at `1` after `POST /api/score/reset` (the reference card). Each correct placement adds `1`. At `score == 4` the game is over.
+**Response:** `200` — `PlayersResponse` (see schema above)
+
+---
+
+### POST /api/wildcard/use
+
+**Description:** Spends one of the current player's wildcards to skip the current song and draw a new one.
+
+**Response:** `200` — `PlayersResponse` (see schema above)
+
+#### Errors
+| Status | Meaning |
+|--------|---------|
+| `409` | Current player has no wildcards available |
+
+---
+
+## Win threshold
+
+The win threshold is **frontend-only**. The backend never compares scores against a threshold or signals a win — it only increments per-player `score` values. The frontend reads `game.winScore` (default `10`, configurable in the CONFIG panel before the game starts) and transitions to the `won` phase when `currentPlayer().score >= game.winScore`.

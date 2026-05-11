@@ -32,8 +32,12 @@
             <select id="device-select">
               <option value="">Loading devices…</option>
             </select>
-            <button id="btn-refresh-devices" title="Refresh devices">↻</button>
+            <button id="btn-refresh-devices" title="Refresh devices" aria-label="Refresh devices">↻</button>
           </div>
+        </div>
+        <div class="config-row hidden" id="playlist-config-row" title="Select playlists to draw songs from">
+          <label class="config-label">PLAYLISTS</label>
+          <div id="playlist-checkboxes"></div>
         </div>
         <div class="config-row" title="Number of points needed to win the game">
           <label class="config-label" for="win-score-select">POINTS TO WIN</label>
@@ -47,9 +51,20 @@
             <option value="10" selected>10</option>
           </select>
         </div>
-        <div class="config-row" title="Your display name shown during the game">
-          <label class="config-label" for="player-name-input">PLAYER NAME</label>
-          <input id="player-name-input" type="text" value="Player 1" maxlength="20" spellcheck="false">
+        <div class="config-row" title="Number of players in this game">
+          <label class="config-label" for="player-count-select">PLAYERS</label>
+          <select id="player-count-select">
+            <option value="1" selected>1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </div>
+        <div id="player-names-config">
+          <div class="config-row">
+            <label class="config-label" for="player-name-1">PLAYER 1</label>
+            <input id="player-name-1" type="text" value="Player 1" maxlength="20" spellcheck="false" aria-label="Player 1 name">
+          </div>
         </div>
       </div>
       <button id="btn-start" disabled>START</button>
@@ -57,10 +72,7 @@
 
     <div id="game-screen" class="hidden">
       <div id="game-topbar">
-        <div id="player-area">
-          <p class="topbar-label">YOUR TURN</p>
-          <p id="player-name-display">Player 1</p>
-        </div>
+        <div id="players-list" aria-label="Players" aria-live="polite"></div>
         <div id="game-topbar-right">
           <div id="score-area">
             <p class="score-label">SCORE</p>
@@ -80,10 +92,18 @@
       <div id="win-screen" class="hidden">
         <div id="win-card">
           <img src="assets/vinyl-mark.svg" alt="" class="win-vinyl">
-          <p class="win-eyebrow">YOU WON</p>
-          <p class="win-title">CONGRATULATIONS!</p>
+          <p class="win-eyebrow">CONGRATULATIONS!</p>
+          <p class="win-title" id="win-title">YOU WIN!</p>
           <p class="win-stat"><span id="win-score-stat"></span> NAILED</p>
           <button id="btn-play-again">PLAY AGAIN</button>
+        </div>
+      </div>
+
+      <div id="wrong-popup" class="hidden" role="dialog" aria-modal="true" aria-labelledby="wrong-popup-next">
+        <div id="wrong-popup-card">
+          <p class="wrong-popup-eyebrow">WRONG!</p>
+          <p id="wrong-popup-next"></p>
+          <button id="btn-wrong-continue">CONTINUE</button>
         </div>
       </div>
 
@@ -100,12 +120,13 @@
         </div>
         <div id="action-buttons">
           <button id="btn-new-song" class="hidden">NEW SONG</button>
+          <button id="btn-next-turn" class="hidden">NEXT TURN</button>
           <button id="btn-add-wildcard" class="hidden" title="Award a wildcard for naming the song title and artist">+1 WILDCARD<span class="wc-icon"> ✦ </span></button>
         </div>
       </div>
     </div>
 
-    <p id="error-msg" class="error hidden"></p>
+    <p id="error-msg" class="error hidden" role="alert" aria-live="assertive"></p>
   </main>
 
   <script src="script.js"></script>

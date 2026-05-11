@@ -15,65 +15,86 @@ const api = {
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail ?? 'Request failed.');
     return res.json();
   },
-  async _post(path) {
-    const res = await fetch(path, { method: 'POST' });
+  async _post(path, body = null) {
+    const res = await fetch(path, {
+      method: 'POST',
+      ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
+    });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail ?? 'Request failed.');
     return res.json().catch(() => null);
   },
-  referenceYear:  () => api._get('/api/reference-year'),
-  resetScore:     () => api._post('/api/score/reset'),
-  addScore:       () => api._post('/api/score/add'),
-  resetWildcards: () => api._post('/api/wildcard/reset'),
-  addWildcard:    () => api._post('/api/wildcard/add'),
-  useWildcard:    () => api._post('/api/wildcard/use'),
+  referenceYear: () => api._get('/api/reference-year'),
+  initPlayers:   (names) => api._post('/api/players/init', { names }),
+  nextTurn:      () => api._post('/api/turn/next'),
+  addScore:      () => api._post('/api/score/add'),
+  addWildcard:   () => api._post('/api/wildcard/add'),
+  useWildcard:   () => api._post('/api/wildcard/use'),
   getSong: () => {
-    const used = game.timeline.map(c => c.track_id).filter(Boolean).join(',');
-    return api._get(used ? `/api/song?exclude=${used}` : '/api/song');
+    const params = new URLSearchParams();
+    const used = currentPlayer().timeline.map(c => c.track_id).filter(Boolean).join(',');
+    if (used) params.set('exclude', used);
+    const selected = [...game.selectedPlaylists];
+    if (selected.length) params.set('playlists', selected.join(','));
+    const qs = params.toString();
+    return api._get('/api/song' + (qs ? '?' + qs : ''));
   },
-  getDevices:     () => api._get('/api/devices'),
-  setDevice:      (id) => fetch(`/api/device/${id}`, { method: 'PUT' }),
-  play:           (trackId) => api._post(`/api/play/${trackId}`),
-  pause:          () => api._post('/api/pause'),
-  resume:         () => api._post('/api/resume'),
+  getPlaylists: () => api._get('/api/playlists'),
+  getDevices: () => api._get('/api/devices'),
+  setDevice:  (id) => fetch(`/api/device/${id}`, { method: 'PUT' }),
+  play:       (trackId) => api._post(`/api/play/${trackId}`),
+  pause:      () => api._post('/api/pause'),
+  resume:     () => api._post('/api/resume'),
 };
 
 // ─── Game state ────────────────────────────────────────────────────────────
 
 const game = {
   phase: PHASE.IDLE,
-  timeline: [],  // Array<{year, name, artist, track_id, isReference}>
+  players: [],              // Array<{name, score, wildcards, timeline, colorPool}>
+  currentPlayerIndex: 0,
+  awaitingNextTurn: false,
   currentTrack: null,
   placedAtIndex: null,
   playState: PLAY.IDLE,
-  score: 0,
-  wildcards: 0,
   showAddWildcard: false,
-  colorPool: [],
-  winScore: parseInt(document.getElementById('win-score-select').value, 10),
-  playerName: 'Player 1',
+  winScore: parseInt(document.getElementById('win-score-select').value, 10), // read before DOM refs freeze
+  availablePlaylists: [],   // [{playlist_id, name}, ...] loaded from API
+  selectedPlaylists: new Set(), // playlist_ids currently active
 };
+
+/** Returns the player whose turn it currently is. */
+const currentPlayer = () => game.players[game.currentPlayerIndex];
 
 // ─── DOM refs ──────────────────────────────────────────────────────────────
 
-const startScreen    = document.getElementById('start-screen');
-const gameScreen     = document.getElementById('game-screen');
-const timelineEl     = document.getElementById('timeline');
-const currentCard    = document.getElementById('current-card');
-const songControls   = document.getElementById('song-controls');
-const btnNewSong     = document.getElementById('btn-new-song');
-const btnPlayPause   = document.getElementById('btn-play-pause');
-const btnReveal      = document.getElementById('btn-reveal');
-const btnSkip        = document.getElementById('btn-skip');
-const btnAddWildcard = document.getElementById('btn-add-wildcard');
-const stagingArea    = document.getElementById('staging-area');
-const btnConfig      = document.getElementById('btn-config');
-const configPanel    = document.getElementById('config-panel');
-const errorMsg       = document.getElementById('error-msg');
-const scoreDisplay   = document.getElementById('score-display');
+const startScreen     = document.getElementById('start-screen');
+const gameScreen      = document.getElementById('game-screen');
+const timelineEl      = document.getElementById('timeline');
+const currentCard     = document.getElementById('current-card');
+const songControls    = document.getElementById('song-controls');
+const btnNewSong      = document.getElementById('btn-new-song');
+const btnPlayPause    = document.getElementById('btn-play-pause');
+const btnReveal       = document.getElementById('btn-reveal');
+const btnSkip         = document.getElementById('btn-skip');
+const btnAddWildcard  = document.getElementById('btn-add-wildcard');
+const stagingArea     = document.getElementById('staging-area');
+const btnConfig       = document.getElementById('btn-config');
+const configPanel     = document.getElementById('config-panel');
+const errorMsg        = document.getElementById('error-msg');
+const scoreDisplay    = document.getElementById('score-display');
 const wildcardDisplay = document.getElementById('wildcard-display');
-const wildcardCount  = document.getElementById('wildcard-count');
-const winScreen      = document.getElementById('win-screen');
-const btnReset       = document.getElementById('btn-home');
+const wildcardCount   = document.getElementById('wildcard-count');
+const winScreen       = document.getElementById('win-screen');
+const btnReset        = document.getElementById('btn-home');
+const btnStart        = document.getElementById('btn-start');
+const playersList     = document.getElementById('players-list');
+const winScoreStat    = document.getElementById('win-score-stat');
+const winTitle        = document.getElementById('win-title');
+const deviceSelect    = document.getElementById('device-select');
+const wrongPopup      = document.getElementById('wrong-popup');
+const wrongPopupNext  = document.getElementById('wrong-popup-next');
+const btnWrongCont    = document.getElementById('btn-wrong-continue');
+const btnNextTurn     = document.getElementById('btn-next-turn');
 
 // ─── Config ────────────────────────────────────────────────────────────────
 
@@ -87,30 +108,65 @@ document.getElementById('win-score-select').addEventListener('change', e => {
   game.winScore = parseInt(e.target.value, 10);
 });
 
-document.getElementById('player-name-input').addEventListener('input', e => {
-  game.playerName = e.target.value || 'Player 1';
-  document.getElementById('player-name-display').textContent = game.playerName;
+/**
+ * Rebuilds the player name input rows inside #player-names-config.
+ * Preserves any values already entered by the user.
+ * @param {number} count - Number of player rows to show (1–4).
+ */
+function rebuildPlayerNameInputs(count) {
+  const container = document.getElementById('player-names-config');
+  const existing = Array.from(container.querySelectorAll('input')).map(el => el.value);
+  container.innerHTML = '';
+  for (let i = 1; i <= count; i++) {
+    const defaultName = `Player ${i}`;
+    const row = document.createElement('div');
+    row.className = 'config-row';
+    const label = document.createElement('label');
+    label.className = 'config-label';
+    label.htmlFor = `player-name-${i}`;
+    label.textContent = `PLAYER ${i}`;
+    const input = document.createElement('input');
+    input.id = `player-name-${i}`;
+    input.type = 'text';
+    input.value = existing[i - 1] ?? defaultName;
+    input.maxLength = 20;
+    input.spellcheck = false;
+    input.setAttribute('aria-label', `Player ${i} name`);
+    row.appendChild(label);
+    row.appendChild(input);
+    container.appendChild(row);
+  }
+}
+
+document.getElementById('player-count-select').addEventListener('change', e => {
+  rebuildPlayerNameInputs(parseInt(e.target.value, 10));
 });
 
 // ─── START ─────────────────────────────────────────────────────────────────
 
-document.getElementById('btn-start').addEventListener('click', async () => {
+btnStart.addEventListener('click', async () => {
   hideError();
   try {
-    const [{ year }, { score }, { wildcards }] = await Promise.all([
-      api.referenceYear(),
-      api.resetScore(),
-      api.resetWildcards(),
+    const names = Array.from(
+      document.getElementById('player-names-config').querySelectorAll('input'),
+    ).map(el => el.value.trim() || el.placeholder || `Player ${el.id.split('-').pop()}`);
+
+    const [refYears, data] = await Promise.all([
+      Promise.all(names.map(() => api.referenceYear())),
+      api.initPlayers(names),
     ]);
 
+    game.players = data.players.map((p, i) => ({
+      name: p.name,
+      score: p.score,
+      wildcards: p.wildcards,
+      timeline: [{ year: refYears[i].year, isReference: true, name: null, artist: null, track_id: null }],
+      colorPool: shuffledColors(),
+    }));
+    game.currentPlayerIndex = data.current_player_index;
     game.phase = PHASE.STARTED;
-    game.score = score;
-    game.wildcards = wildcards;
     game.showAddWildcard = false;
-    game.colorPool = shuffledColors();
-    game.timeline = [{ year, isReference: true, name: null, artist: null, track_id: null }];
 
-    document.getElementById('player-name-display').textContent = game.playerName;
     startScreen.classList.add('hidden');
     gameScreen.classList.remove('hidden');
     render();
@@ -121,6 +177,21 @@ document.getElementById('btn-start').addEventListener('click', async () => {
 
 // ─── NEW SONG ──────────────────────────────────────────────────────────────
 
+/**
+ * Syncs per-player scores, wildcards, and the current player index from
+ * any PlayersResponse. Does not touch timelines or colorPools.
+ * @param {Object} data - A PlayersResponse from the backend.
+ */
+function syncPlayersFromResponse(data) {
+  data.players.forEach((p, i) => {
+    if (game.players[i]) {
+      game.players[i].score = p.score;
+      game.players[i].wildcards = p.wildcards;
+    }
+  });
+  game.currentPlayerIndex = data.current_player_index;
+}
+
 btnNewSong.addEventListener('click', async () => {
   btnNewSong.disabled = true;
   hideError();
@@ -130,12 +201,17 @@ btnNewSong.addEventListener('click', async () => {
       game.playState = PLAY.IDLE;
     }
 
+    if (game.awaitingNextTurn) {
+      const data = await api.nextTurn();
+      syncPlayersFromResponse(data);
+      game.awaitingNextTurn = false;
+    }
+
     game.currentTrack = await api.getSong();
     game.phase = PHASE.PLACING;
     game.placedAtIndex = null;
     game.playState = PLAY.IDLE;
     game.showAddWildcard = false;
-    btnPlayPause.textContent = '▶ PLAY';
     render();
   } catch (e) {
     showError(e.message);
@@ -154,16 +230,14 @@ btnPlayPause.addEventListener('click', async () => {
     if (game.playState === PLAY.IDLE) {
       await api.play(game.currentTrack.track_id);
       game.playState = PLAY.PLAYING;
-      btnPlayPause.textContent = '⏸ PAUSE';
     } else if (game.playState === PLAY.PLAYING) {
       await api.pause();
       game.playState = PLAY.PAUSED;
-      btnPlayPause.textContent = '▶ PLAY';
     } else {
       await api.resume();
       game.playState = PLAY.PLAYING;
-      btnPlayPause.textContent = '⏸ PAUSE';
     }
+    render();
   } catch (e) {
     showError(e.message);
   }
@@ -174,40 +248,45 @@ btnPlayPause.addEventListener('click', async () => {
 btnReveal.addEventListener('click', async () => {
   if (game.phase !== PHASE.PLACED || !game.currentTrack) return;
 
-  const year = parseInt(game.currentTrack.year, 10);
-  const left  = game.placedAtIndex > 0 ? game.timeline[game.placedAtIndex - 1] : null;
-  const right = game.placedAtIndex < game.timeline.length ? game.timeline[game.placedAtIndex] : null;
-  const valid = (!left || left.year <= year) && (!right || right.year >= year);
+  const player = currentPlayer();
+  const year   = parseInt(game.currentTrack.year, 10);
+  const left   = game.placedAtIndex > 0 ? player.timeline[game.placedAtIndex - 1] : null;
+  const right  = game.placedAtIndex < player.timeline.length ? player.timeline[game.placedAtIndex] : null;
+  const valid  = (!left || left.year <= year) && (!right || right.year >= year);
 
   if (valid) {
-    game.timeline.splice(game.placedAtIndex, 0, {
+    player.timeline.splice(game.placedAtIndex, 0, {
       year,
       name: game.currentTrack.name,
       artist: game.currentTrack.artist,
       track_id: game.currentTrack.track_id,
       isReference: false,
-      colorIndex: game.colorPool.shift() ?? Math.floor(Math.random() * 10),
+      colorIndex: player.colorPool.shift() ?? Math.floor(Math.random() * 10),
     });
     game.currentTrack = null;
     game.placedAtIndex = null;
 
     try {
-      const { score } = await api.addScore();
-      game.score = score;
+      const data = await api.addScore();
+      syncPlayersFromResponse(data);
     } catch (e) {
       showError(e.message);
       return;
     }
 
-    if (game.score >= game.winScore) {
+    if (currentPlayer().score >= game.winScore) {
       if (game.playState === PLAY.PLAYING) {
         await api.pause().catch(() => {});
         game.playState = PLAY.IDLE;
       }
       game.phase = PHASE.WON;
-      document.getElementById('win-score-stat').textContent = `${game.score} / ${game.winScore}`;
+      winTitle.textContent = game.players.length > 1
+        ? `${currentPlayer().name} wins!`
+        : 'You win!';
+      winScoreStat.textContent = `${currentPlayer().score} / ${game.winScore}`;
     } else {
       game.showAddWildcard = true;
+      game.awaitingNextTurn = true;
       game.phase = PHASE.STARTED;
     }
     render();
@@ -215,12 +294,22 @@ btnReveal.addEventListener('click', async () => {
     game.showAddWildcard = true;
     game.phase = PHASE.WRONG;
     render();
-    setTimeout(() => {
-      game.phase = PHASE.STARTED;
-      game.currentTrack = null;
-      game.placedAtIndex = null;
-      render();
-    }, 1500);
+
+    if (game.players.length > 1) {
+      const nextIdx = (game.currentPlayerIndex + 1) % game.players.length;
+      wrongPopupNext.textContent = `It's ${game.players[nextIdx].name}'s turn`;
+      wrongPopup.classList.remove('hidden');
+    } else {
+      setTimeout(async () => {
+        const data = await api.nextTurn();
+        syncPlayersFromResponse(data);
+        game.awaitingNextTurn = false;
+        game.phase = PHASE.STARTED;
+        game.currentTrack = null;
+        game.placedAtIndex = null;
+        render();
+      }, 1500);
+    }
   }
 });
 
@@ -228,20 +317,18 @@ btnReveal.addEventListener('click', async () => {
 
 function resetGame() {
   game.phase = PHASE.IDLE;
-  game.timeline = [];
+  game.players = [];
+  game.currentPlayerIndex = 0;
+  game.awaitingNextTurn = false;
   game.currentTrack = null;
   game.placedAtIndex = null;
-  game.score = 0;
-  game.wildcards = 0;
   game.showAddWildcard = false;
-  game.colorPool = [];
   game.playState = PLAY.IDLE;
-  btnPlayPause.textContent = '▶ PLAY';
   gameScreen.classList.add('hidden');
   winScreen.classList.add('hidden');
+  wrongPopup.classList.add('hidden');
   startScreen.classList.remove('hidden');
-  const selectedDevice = document.getElementById('device-select').value;
-  document.getElementById('btn-start').disabled = !selectedDevice;
+  btnStart.disabled = !deviceSelect.value;
 }
 
 document.getElementById('btn-play-again').addEventListener('click', resetGame);
@@ -250,7 +337,7 @@ btnReset.addEventListener('click', resetGame);
 // ─── SKIP ──────────────────────────────────────────────────────────────────
 
 btnSkip.addEventListener('click', async () => {
-  if (game.wildcards < 1) return;
+  if (currentPlayer().wildcards < 1) return;
   btnSkip.disabled = true;
   hideError();
   try {
@@ -258,19 +345,18 @@ btnSkip.addEventListener('click', async () => {
       await api.pause();
       game.playState = PLAY.IDLE;
     }
-    const [{ wildcards }, track] = await Promise.all([api.useWildcard(), api.getSong()]);
-    game.wildcards = wildcards;
+    const [data, track] = await Promise.all([api.useWildcard(), api.getSong()]);
+    syncPlayersFromResponse(data);
     game.currentTrack = track;
     game.phase = PHASE.PLACING;
     game.placedAtIndex = null;
     game.playState = PLAY.IDLE;
     game.showAddWildcard = false;
-    btnPlayPause.textContent = '▶ PLAY';
     render();
   } catch (e) {
     showError(e.message);
   } finally {
-    btnSkip.disabled = game.wildcards < 1;
+    btnSkip.disabled = currentPlayer().wildcards < 1;
   }
 });
 
@@ -279,11 +365,59 @@ btnSkip.addEventListener('click', async () => {
 btnAddWildcard.addEventListener('click', async () => {
   hideError();
   try {
-    const { wildcards } = await api.addWildcard();
-    game.wildcards = wildcards;
+    const data = await api.addWildcard();
+    syncPlayersFromResponse(data);
     render();
   } catch (e) {
     showError(e.message);
+  }
+});
+
+// ─── WRONG CONTINUE ────────────────────────────────────────────────────────
+
+btnWrongCont.addEventListener('click', async () => {
+  btnWrongCont.disabled = true;
+  try {
+    const data = await api.nextTurn();
+    syncPlayersFromResponse(data);
+    game.awaitingNextTurn = false;
+    game.phase = PHASE.STARTED;
+    game.currentTrack = null;
+    game.placedAtIndex = null;
+    game.showAddWildcard = false;
+    wrongPopup.classList.add('hidden');
+    render();
+  } catch (e) {
+    showError(e.message);
+  } finally {
+    btnWrongCont.disabled = false;
+  }
+});
+
+// ─── NEXT TURN ─────────────────────────────────────────────────────────────
+
+btnNextTurn.addEventListener('click', async () => {
+  btnNextTurn.disabled = true;
+  hideError();
+  try {
+    if (game.playState === PLAY.PLAYING) {
+      await api.pause();
+      game.playState = PLAY.IDLE;
+    }
+    const data = await api.nextTurn();
+    syncPlayersFromResponse(data);
+    game.awaitingNextTurn = false;
+
+    game.currentTrack = await api.getSong();
+    game.phase = PHASE.PLACING;
+    game.placedAtIndex = null;
+    game.playState = PLAY.IDLE;
+    game.showAddWildcard = false;
+    render();
+  } catch (e) {
+    showError(e.message);
+  } finally {
+    btnNextTurn.disabled = false;
   }
 });
 
@@ -302,20 +436,55 @@ attachDragHandlers(currentCard);
 
 // ─── Render ────────────────────────────────────────────────────────────────
 
-function shuffledColors() { return [...Array(10).keys()].sort(() => Math.random() - 0.5); }
+/** Returns indices 0–9 in a uniformly random order (Fisher-Yates). */
+function shuffledColors() {
+  const arr = [...Array(10).keys()];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 
 function render() {
+  renderPlayers();
   renderTimeline();
   renderScore();
-  wildcardCount.textContent = game.wildcards;
+  wildcardCount.textContent = currentPlayer()?.wildcards ?? 0;
   updateUI();
 }
 
+/**
+ * Renders player chips into #players-list.
+ * The current player's chip gets the player-chip--current modifier class.
+ */
+function renderPlayers() {
+  playersList.innerHTML = '';
+  game.players.forEach((p, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'player-chip' + (i === game.currentPlayerIndex ? ' player-chip--current' : '');
+    chip.setAttribute('aria-current', i === game.currentPlayerIndex ? 'true' : 'false');
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'player-chip__name';
+    nameEl.textContent = p.name;
+
+    const scoreEl = document.createElement('span');
+    scoreEl.className = 'player-chip__score';
+    scoreEl.textContent = `${p.score}/${game.winScore}`;
+
+    chip.appendChild(nameEl);
+    chip.appendChild(scoreEl);
+    playersList.appendChild(chip);
+  });
+}
+
 function renderScore() {
+  const score = currentPlayer()?.score ?? 0;
   scoreDisplay.innerHTML = '';
   for (let i = 1; i <= game.winScore; i++) {
     const pip = document.createElement('span');
-    pip.className = 'score-pip' + (i <= game.score ? ' filled' : '');
+    pip.className = 'score-pip' + (i <= score ? ' filled' : '');
     scoreDisplay.appendChild(pip);
   }
 }
@@ -323,7 +492,8 @@ function renderScore() {
 function renderTimeline() {
   timelineEl.innerHTML = '';
 
-  const { phase, timeline, placedAtIndex } = game;
+  const { phase, placedAtIndex } = game;
+  const timeline = currentPlayer()?.timeline ?? [];
 
   for (let i = 0; i <= timeline.length; i++) {
     if (phase === PHASE.PLACING || (phase === PHASE.PLACED && placedAtIndex !== i)) {
@@ -405,7 +575,8 @@ function makePendingCard(isWrong, isDraggable) {
 
 function updateUI() {
   const { phase } = game;
-  const hasSong = game.currentTrack !== null;
+  const hasSong   = game.currentTrack !== null;
+  const wildcards = currentPlayer()?.wildcards ?? 0;
 
   currentCard.classList.toggle('hidden', phase !== PHASE.PLACING);
   currentCard.draggable = phase === PHASE.PLACING;
@@ -413,7 +584,10 @@ function updateUI() {
   songControls.classList.toggle('hidden', !hasSong || phase === PHASE.WRONG);
   btnReveal.disabled = phase !== PHASE.PLACED;
 
-  btnNewSong.classList.toggle('hidden', phase !== PHASE.STARTED);
+  btnPlayPause.textContent = game.playState === PLAY.PLAYING ? '⏸ PAUSE' : '▶ PLAY';
+
+  btnNewSong.classList.toggle('hidden', phase !== PHASE.STARTED || game.awaitingNextTurn);
+  btnNextTurn.classList.toggle('hidden', phase !== PHASE.STARTED || !game.awaitingNextTurn);
 
   scoreDisplay.classList.toggle('hidden', phase === PHASE.IDLE);
   winScreen.classList.toggle('hidden', phase !== PHASE.WON);
@@ -423,33 +597,102 @@ function updateUI() {
   stagingArea.classList.toggle('hidden', phase === PHASE.WON);
 
   btnSkip.classList.toggle('hidden', !hasSong || phase === PHASE.WRONG);
-  btnSkip.disabled = game.wildcards < 1;
-  btnSkip.title = game.wildcards < 1 ? 'No wildcards available' : 'Skip this song and get a new one (uses 1 wildcard)';
+  btnSkip.disabled = wildcards < 1;
+  btnSkip.title = wildcards < 1 ? 'No wildcards available' : 'Skip this song and get a new one (uses 1 wildcard)';
 
   btnAddWildcard.classList.toggle('hidden', !game.showAddWildcard || phase === PHASE.WON);
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
+/**
+ * Fetches configured playlists from the API and renders the CONFIG checkboxes.
+ * Silently no-ops on error — the song endpoint falls back to all playlists.
+ */
+async function loadPlaylists() {
+  try {
+    const data = await api.getPlaylists();
+    game.availablePlaylists = data;
+    game.selectedPlaylists = new Set(data.map(p => p.playlist_id));
+    renderPlaylistConfig();
+    if (data.length > 0) {
+      document.getElementById('playlist-config-row').classList.remove('hidden');
+    }
+  } catch {
+    // silently fail — getSong will use all tracks
+  }
+}
+
+/** Builds playlist checkbox rows inside #playlist-checkboxes. */
+function renderPlaylistConfig() {
+  const container = document.getElementById('playlist-checkboxes');
+  if (!container) return;
+  container.innerHTML = '';
+  game.availablePlaylists.forEach(pl => {
+    const label = document.createElement('label');
+    label.className = 'playlist-option';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = pl.playlist_id;
+    checkbox.checked = game.selectedPlaylists.has(pl.playlist_id);
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) {
+        game.selectedPlaylists.add(pl.playlist_id);
+      } else {
+        if (game.selectedPlaylists.size <= 1) {
+          checkbox.checked = true;
+          return;
+        }
+        game.selectedPlaylists.delete(pl.playlist_id);
+      }
+      updatePlaylistCheckboxStates();
+    });
+
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = pl.name;
+
+    label.appendChild(checkbox);
+    label.appendChild(nameSpan);
+    container.appendChild(label);
+  });
+  updatePlaylistCheckboxStates();
+}
+
+/** Disables checkboxes when only one playlist remains selected. */
+function updatePlaylistCheckboxStates() {
+  const container = document.getElementById('playlist-checkboxes');
+  if (!container) return;
+  const onlyOne = game.selectedPlaylists.size === 1;
+  container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    const shouldDisable = onlyOne && cb.checked;
+    cb.disabled = shouldDisable;
+    cb.closest('.playlist-option').classList.toggle('disabled', shouldDisable);
+  });
+}
+
+/**
+ * Fetches available Spotify devices and populates the device select.
+ * Auto-selects the active device and enables the start button if found.
+ */
 async function loadDevices() {
   try {
     const devices = await api.getDevices();
-    const select = document.getElementById('device-select');
-    const current = select.value;
-    select.innerHTML = '<option value="">Select a device…</option>';
+    const current = deviceSelect.value;
+    deviceSelect.innerHTML = '<option value="">Select a device…</option>';
     devices.forEach(d => {
       const opt = document.createElement('option');
       opt.value = d.device_id;
       opt.textContent = d.name + (d.is_active ? ' ✓' : '');
       if (d.device_id === current) opt.selected = true;
-      select.appendChild(opt);
+      deviceSelect.appendChild(opt);
     });
-    if (!select.value) {
+    if (!deviceSelect.value) {
       const active = devices.find(d => d.is_active);
       if (active) {
-        select.value = active.device_id;
+        deviceSelect.value = active.device_id;
         await api.setDevice(active.device_id).catch(() => {});
-        document.getElementById('btn-start').disabled = false;
+        btnStart.disabled = false;
       }
     }
   } catch {
@@ -467,18 +710,19 @@ function hideError() {
   errorMsg.classList.add('hidden');
 }
 
-document.getElementById('device-select').addEventListener('change', async e => {
+deviceSelect.addEventListener('change', async e => {
   const deviceId = e.target.value;
-  document.getElementById('btn-start').disabled = !deviceId;
+  btnStart.disabled = !deviceId;
   if (!deviceId) return;
   try {
     await api.setDevice(deviceId);
   } catch {
     showError('Could not select device.');
-    document.getElementById('btn-start').disabled = true;
+    btnStart.disabled = true;
   }
 });
 
-document.getElementById('btn-refresh-devices').addEventListener('click', loadDevices);
+document.getElementById('btn-refresh-devices').addEventListener('click', loadDevices); // no cached ref needed — event wired once
 
 loadDevices();
+loadPlaylists();
