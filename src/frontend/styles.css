@@ -80,7 +80,7 @@ button:disabled { opacity: 0.3; cursor: default; }
 }
 
 #btn-reveal {
-  background: #f0187a;
+  background: #b4ff00;  /* lime */
   color: #111;
   border: none;
 }
