@@ -38,9 +38,19 @@ def test_spotify_op_converts_403():
 
 def test_spotify_op_reraises_other_spotify_exceptions():
     exc = SpotifyException(http_status=500, code=-1, msg="Server error")
-    with pytest.raises(SpotifyException):
+    with pytest.raises(HTTPException) as exc_info:
         with _spotify_op():
             raise exc
+    assert exc_info.value.status_code == 502
+
+
+def test_spotify_op_converts_non_403_detail_message():
+    exc = SpotifyException(http_status=429, code=-1, msg="Rate limit exceeded")
+    with pytest.raises(HTTPException) as exc_info:
+        with _spotify_op():
+            raise exc
+    assert exc_info.value.status_code == 502
+    assert "Rate limit exceeded" in exc_info.value.detail
 
 
 # ─── fetch_all_tracks ────────────────────────────────────────────────────────
@@ -137,6 +147,12 @@ def test_get_random_track_all_excluded_raises_404():
     with pytest.raises(HTTPException) as exc_info:
         get_random_track([track], exclude={"t1"})
     assert exc_info.value.status_code == 404
+
+
+def test_get_random_track_empty_exclude_set_excludes_nothing():
+    track = _make_track("t1", "Song", "1985")
+    result = get_random_track([track], exclude=set())
+    assert result.track_id == "t1"
 
 
 def test_get_random_track_exclude_returns_only_non_excluded():

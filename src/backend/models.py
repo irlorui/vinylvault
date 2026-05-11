@@ -56,7 +56,10 @@ class InitPlayersRequest(BaseModel):
     @field_validator("names")
     @classmethod
     def validate_player_count(cls, v: list[str]) -> list[str]:
-        """Enforce 1–4 players."""
+        """Enforce 1–4 non-empty players."""
         if not 1 <= len(v) <= 4:
             raise ValueError("Player count must be between 1 and 4.")
+        v = [name.strip() for name in v]
+        if any(not name for name in v):
+            raise ValueError("Player names must not be empty.")
         return v
