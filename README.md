@@ -16,7 +16,7 @@ Built with **FastAPI** + **spotipy** on the backend and plain HTML/CSS/JS on the
 
 To run Vinyl Vault you need to set up an app in [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard). This is completely free but requires a Spotify Premium account.
 
-Full How-to guide is available at [docs/how_to_setup_spotify_app.md](docs/how_to_setup_spotify_app.md).
+Full How-to guide is available at [How to Setup a Spotify App](docs/how_to_setup_spotify_app.md).
 
 > **Note:** playback requires Spotify Premium and an active device (desktop app, phone, etc.).
 
@@ -48,7 +48,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser. On first ru
 4. Click **REVEAL** — if your placement is chronologically correct the card stays; if not, it disappears.
 5. Reach the **Points to win** target (default: 10) (including the reference) and you win! 🏆
 
-Full rules and a game-flow diagram are in [docs/game_rules.md](docs/game_rules.md).
+Full rules and a game-flow diagram are in [Game Rules](docs/game_rules.md).
 
 ---
 
@@ -58,8 +58,8 @@ Full rules and a game-flow diagram are in [docs/game_rules.md](docs/game_rules.m
 src/
   backend/
     config.py     # loads .config/.env credentials
-    models.py     # Pydantic response models (TrackResponse, ScoreResponse, …)
-    score.py      # GameScore and GameWildcard classes
+    models.py     # Pydantic response models (TrackResponse, PlayerState, PlayersResponse, …)
+    score.py      # GameScore, GameWildcard, Player, and GamePlayers classes
     spotify.py    # spotipy client, get_random_track, play/pause/resume
     main.py       # FastAPI app + static file serving
   frontend/
@@ -67,22 +67,22 @@ src/
 docs/             # documentation on project
 ```
 
-**API endpoints** — full reference in [docs/api.md](docs/api.md):
+**API endpoints** — full reference in [API documentation](docs/api.md):
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET`  | `/api/reference-year` | Random anchor year (1960 – now) |
-| `POST` | `/api/score/reset` | Reset score to 1 (new game) |
-| `POST` | `/api/score/add` | Add 1 point → `ScoreResponse` |
+| `POST` | `/api/players/init` | Initialise 1–4 named players, reset all state |
+| `POST` | `/api/turn/next` | Advance to next player's turn |
+| `POST` | `/api/score/add` | Add 1 point for current player |
 | `GET`  | `/api/song` | Random track from the cached playlist |
 | `GET`  | `/api/devices` | List available Spotify devices |
 | `PUT`  | `/api/device/{device_id}` | Pin a device for playback |
 | `POST` | `/api/play/{track_id}` | Start playback on the pinned device |
 | `POST` | `/api/pause` | Pause playback |
 | `POST` | `/api/resume` | Resume playback |
-| `POST` | `/api/wildcard/reset` | Reset wildcard count (new game) |
-| `POST` | `/api/wildcard/add` | Award 1 wildcard |
-| `POST` | `/api/wildcard/use` | Spend 1 wildcard → 409 if empty |
+| `POST` | `/api/wildcard/add` | Award 1 wildcard to current player |
+| `POST` | `/api/wildcard/use` | Spend 1 wildcard → 409 if none |
 
 ---
 

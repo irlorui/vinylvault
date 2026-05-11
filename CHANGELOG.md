@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased]
+
+### Added
+- Multi-player support (1–4 players): each player has an independent timeline, score, and wildcard pool; players take turns in CONFIG order with score chips in the topbar showing `current/target`; NEXT TURN button appears after a correct reveal; wrong-reveal popup for 3+ players announces the next player by name; new routes `POST /api/players/init` and `POST /api/turn/next` manage turn state
+
+### Changed
+- Score and wildcard routes (`/api/score/add`, `/api/wildcard/add`, `/api/wildcard/use`) now return `PlayersResponse` (all players' state + current player index) instead of single-player `ScoreResponse`/`WildcardResponse`
+
+### Removed
+- `POST /api/score/reset` and `POST /api/wildcard/reset` — superseded by `POST /api/players/init`
+
+### Fixed
+- Accessibility improvements: focus rings, `aria-label` and `aria-live` attributes, `role="alert"` on error messages
+- Replaced biased `sort(() => Math.random() - 0.5)` card colour shuffle with Fisher-Yates algorithm
+
+---
+
 ## [1.1.0] — 2026-05-11
 
 ### Added
