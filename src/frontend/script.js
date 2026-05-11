@@ -1,12 +1,49 @@
 const WIN_SCORE = 4;
 
-// Game state
+const PHASE = Object.freeze({
+  IDLE: 'idle', STARTED: 'started', PLACING: 'placing',
+  PLACED: 'placed', WRONG: 'wrong', WON: 'won',
+});
+
+const PLAY = Object.freeze({
+  IDLE: 'idle', PLAYING: 'playing', PAUSED: 'paused',
+});
+
+// ─── API client ────────────────────────────────────────────────────────────
+
+const api = {
+  async _get(path) {
+    const res = await fetch(path);
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail ?? 'Request failed.');
+    return res.json();
+  },
+  async _post(path) {
+    const res = await fetch(path, { method: 'POST' });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail ?? 'Request failed.');
+    return res.json().catch(() => null);
+  },
+  referenceYear:  () => api._get('/api/reference-year'),
+  resetScore:     () => api._post('/api/score/reset'),
+  addScore:       () => api._post('/api/score/add'),
+  resetWildcards: () => api._post('/api/wildcard/reset'),
+  addWildcard:    () => api._post('/api/wildcard/add'),
+  useWildcard:    () => api._post('/api/wildcard/use'),
+  getSong:        () => api._get('/api/song'),
+  getDevices:     () => api._get('/api/devices'),
+  setDevice:      (id) => fetch(`/api/device/${id}`, { method: 'PUT' }),
+  play:           (trackId) => api._post(`/api/play/${trackId}`),
+  pause:          () => api._post('/api/pause'),
+  resume:         () => api._post('/api/resume'),
+};
+
+// ─── Game state ────────────────────────────────────────────────────────────
+
 const game = {
-  phase: 'idle', // 'idle' | 'started' | 'placing' | 'placed' | 'wrong' | 'won'
+  phase: PHASE.IDLE,
   timeline: [],  // Array<{year, name, artist, track_id, isReference}>
   currentTrack: null,
   placedAtIndex: null,
-  playState: 'idle', // 'idle' | 'playing' | 'paused'
+  playState: PLAY.IDLE,
   score: 0,
   wildcards: 0,
   showAddWildcard: false,
@@ -15,29 +52,30 @@ const game = {
   playerName: 'Player 1',
 };
 
-// DOM refs
-const startScreen = document.getElementById('start-screen');
-const gameScreen = document.getElementById('game-screen');
-const timelineEl = document.getElementById('timeline');
-const currentCard = document.getElementById('current-card');
-const songControls = document.getElementById('song-controls');
-const btnNewSong = document.getElementById('btn-new-song');
-const btnPlayPause = document.getElementById('btn-play-pause');
-const btnReveal = document.getElementById('btn-reveal');
-const btnSkip = document.getElementById('btn-skip');
-const btnAddWildcard = document.getElementById('btn-add-wildcard');
-const stagingArea = document.getElementById('staging-area');
-const btnConfig = document.getElementById('btn-config');
-const configPanel = document.getElementById('config-panel');
-const errorMsg = document.getElementById('error-msg');
-const scoreDisplay = document.getElementById('score-display');
-const wildcardDisplay = document.getElementById('wildcard-display');
-const wildcardCount = document.getElementById('wildcard-count');
-const winScreen = document.getElementById('win-screen');
-const deviceSelector = document.getElementById('device-selector');
-const btnReset = document.getElementById('btn-home');
+// ─── DOM refs ──────────────────────────────────────────────────────────────
 
-// CONFIG
+const startScreen    = document.getElementById('start-screen');
+const gameScreen     = document.getElementById('game-screen');
+const timelineEl     = document.getElementById('timeline');
+const currentCard    = document.getElementById('current-card');
+const songControls   = document.getElementById('song-controls');
+const btnNewSong     = document.getElementById('btn-new-song');
+const btnPlayPause   = document.getElementById('btn-play-pause');
+const btnReveal      = document.getElementById('btn-reveal');
+const btnSkip        = document.getElementById('btn-skip');
+const btnAddWildcard = document.getElementById('btn-add-wildcard');
+const stagingArea    = document.getElementById('staging-area');
+const btnConfig      = document.getElementById('btn-config');
+const configPanel    = document.getElementById('config-panel');
+const errorMsg       = document.getElementById('error-msg');
+const scoreDisplay   = document.getElementById('score-display');
+const wildcardDisplay = document.getElementById('wildcard-display');
+const wildcardCount  = document.getElementById('wildcard-count');
+const winScreen      = document.getElementById('win-screen');
+const btnReset       = document.getElementById('btn-home');
+
+// ─── Config ────────────────────────────────────────────────────────────────
+
 btnConfig.addEventListener('click', () => {
   const open = !configPanel.classList.contains('hidden');
   configPanel.classList.toggle('hidden', open);
@@ -53,21 +91,18 @@ document.getElementById('player-name-input').addEventListener('input', e => {
   document.getElementById('player-name-display').textContent = game.playerName;
 });
 
-// START
+// ─── START ─────────────────────────────────────────────────────────────────
+
 document.getElementById('btn-start').addEventListener('click', async () => {
   hideError();
   try {
-    const [refRes, scoreRes, wcRes] = await Promise.all([
-      fetch('/api/reference-year'),
-      fetch('/api/score/reset', { method: 'POST' }),
-      fetch('/api/wildcard/reset', { method: 'POST' }),
+    const [{ year }, { score }, { wildcards }] = await Promise.all([
+      api.referenceYear(),
+      api.resetScore(),
+      api.resetWildcards(),
     ]);
-    if (!refRes.ok || !scoreRes.ok || !wcRes.ok) { showError('Failed to start game.'); return; }
-    const { year } = await refRes.json();
-    const { score } = await scoreRes.json();
-    const { wildcards } = await wcRes.json();
 
-    game.phase = 'started';
+    game.phase = PHASE.STARTED;
     game.score = score;
     game.wildcards = wildcards;
     game.showAddWildcard = false;
@@ -78,70 +113,68 @@ document.getElementById('btn-start').addEventListener('click', async () => {
     startScreen.classList.add('hidden');
     gameScreen.classList.remove('hidden');
     render();
-  } catch {
-    showError('Could not reach the server.');
+  } catch (e) {
+    showError(e.message);
   }
 });
 
-// NEW SONG
+// ─── NEW SONG ──────────────────────────────────────────────────────────────
+
 btnNewSong.addEventListener('click', async () => {
   btnNewSong.disabled = true;
   hideError();
   try {
-    if (game.playState === 'playing') {
-      await fetch('/api/pause', { method: 'POST' });
-      game.playState = 'idle';
+    if (game.playState === PLAY.PLAYING) {
+      await api.pause();
+      game.playState = PLAY.IDLE;
     }
 
-    const res = await fetch('/api/song');
-    if (!res.ok) {
-      showError((await res.json().catch(() => ({}))).detail ?? 'Failed to load a song.');
-      return;
-    }
-
-    game.currentTrack = await res.json();
-    game.phase = 'placing';
+    game.currentTrack = await api.getSong();
+    game.phase = PHASE.PLACING;
     game.placedAtIndex = null;
-    game.playState = 'idle';
+    game.playState = PLAY.IDLE;
     game.showAddWildcard = false;
     btnPlayPause.textContent = '▶ PLAY';
     render();
-  } catch {
-    showError('Could not reach the server.');
+  } catch (e) {
+    showError(e.message);
   } finally {
     btnNewSong.disabled = false;
   }
 });
 
-// PLAY / PAUSE
+// ─── PLAY / PAUSE ──────────────────────────────────────────────────────────
+
 btnPlayPause.addEventListener('click', async () => {
   if (!game.currentTrack) return;
   hideError();
 
-  if (game.playState === 'idle') {
-    const res = await fetch(`/api/play/${game.currentTrack.track_id}`, { method: 'POST' });
-    if (!res.ok) { showError((await res.json().catch(() => ({}))).detail ?? 'Playback failed.'); return; }
-    game.playState = 'playing';
-    btnPlayPause.textContent = '⏸ PAUSE';
-  } else if (game.playState === 'playing') {
-    const res = await fetch('/api/pause', { method: 'POST' });
-    if (!res.ok) { showError((await res.json().catch(() => ({}))).detail ?? 'Pause failed.'); return; }
-    game.playState = 'paused';
-    btnPlayPause.textContent = '▶ PLAY';
-  } else {
-    const res = await fetch('/api/resume', { method: 'POST' });
-    if (!res.ok) { showError((await res.json().catch(() => ({}))).detail ?? 'Resume failed.'); return; }
-    game.playState = 'playing';
-    btnPlayPause.textContent = '⏸ PAUSE';
+  try {
+    if (game.playState === PLAY.IDLE) {
+      await api.play(game.currentTrack.track_id);
+      game.playState = PLAY.PLAYING;
+      btnPlayPause.textContent = '⏸ PAUSE';
+    } else if (game.playState === PLAY.PLAYING) {
+      await api.pause();
+      game.playState = PLAY.PAUSED;
+      btnPlayPause.textContent = '▶ PLAY';
+    } else {
+      await api.resume();
+      game.playState = PLAY.PLAYING;
+      btnPlayPause.textContent = '⏸ PAUSE';
+    }
+  } catch (e) {
+    showError(e.message);
   }
 });
 
-// REVEAL
+// ─── REVEAL ────────────────────────────────────────────────────────────────
+
 btnReveal.addEventListener('click', async () => {
-  if (game.phase !== 'placed' || !game.currentTrack) return;
+  if (game.phase !== PHASE.PLACED || !game.currentTrack) return;
 
   const year = parseInt(game.currentTrack.year, 10);
-  const left = game.placedAtIndex > 0 ? game.timeline[game.placedAtIndex - 1] : null;
+  const left  = game.placedAtIndex > 0 ? game.timeline[game.placedAtIndex - 1] : null;
   const right = game.placedAtIndex < game.timeline.length ? game.timeline[game.placedAtIndex] : null;
   const valid = (!left || left.year <= year) && (!right || right.year >= year);
 
@@ -157,29 +190,32 @@ btnReveal.addEventListener('click', async () => {
     game.currentTrack = null;
     game.placedAtIndex = null;
 
-    const scoreRes = await fetch('/api/score/add', { method: 'POST' });
-    if (!scoreRes.ok) { showError('Failed to update score.'); return; }
-    const { score } = await scoreRes.json();
-    game.score = score;
+    try {
+      const { score } = await api.addScore();
+      game.score = score;
+    } catch (e) {
+      showError(e.message);
+      return;
+    }
 
     if (game.score >= game.winScore) {
-      if (game.playState === 'playing') {
-        await fetch('/api/pause', { method: 'POST' }).catch(() => {});
-        game.playState = 'idle';
+      if (game.playState === PLAY.PLAYING) {
+        await api.pause().catch(() => {});
+        game.playState = PLAY.IDLE;
       }
-      game.phase = 'won';
+      game.phase = PHASE.WON;
       document.getElementById('win-score-stat').textContent = `${game.score} / ${game.winScore}`;
     } else {
       game.showAddWildcard = true;
-      game.phase = 'started';
+      game.phase = PHASE.STARTED;
     }
     render();
   } else {
     game.showAddWildcard = true;
-    game.phase = 'wrong';
+    game.phase = PHASE.WRONG;
     render();
     setTimeout(() => {
-      game.phase = 'started';
+      game.phase = PHASE.STARTED;
       game.currentTrack = null;
       game.placedAtIndex = null;
       render();
@@ -187,8 +223,10 @@ btnReveal.addEventListener('click', async () => {
   }
 });
 
+// ─── RESET ─────────────────────────────────────────────────────────────────
+
 function resetGame() {
-  game.phase = 'idle';
+  game.phase = PHASE.IDLE;
   game.timeline = [];
   game.currentTrack = null;
   game.placedAtIndex = null;
@@ -196,78 +234,70 @@ function resetGame() {
   game.wildcards = 0;
   game.showAddWildcard = false;
   game.colorPool = [];
-  game.playState = 'idle';
+  game.playState = PLAY.IDLE;
   btnPlayPause.textContent = '▶ PLAY';
   gameScreen.classList.add('hidden');
   winScreen.classList.add('hidden');
   startScreen.classList.remove('hidden');
-  deviceSelector.classList.remove('hidden');
   const selectedDevice = document.getElementById('device-select').value;
   document.getElementById('btn-start').disabled = !selectedDevice;
 }
 
-// PLAY AGAIN
 document.getElementById('btn-play-again').addEventListener('click', resetGame);
-
-// RESET
 btnReset.addEventListener('click', resetGame);
 
-// SKIP
+// ─── SKIP ──────────────────────────────────────────────────────────────────
+
 btnSkip.addEventListener('click', async () => {
   if (game.wildcards < 1) return;
   btnSkip.disabled = true;
   hideError();
   try {
-    if (game.playState === 'playing') {
-      await fetch('/api/pause', { method: 'POST' });
-      game.playState = 'idle';
+    if (game.playState === PLAY.PLAYING) {
+      await api.pause();
+      game.playState = PLAY.IDLE;
     }
-    const [useRes, songRes] = await Promise.all([
-      fetch('/api/wildcard/use', { method: 'POST' }),
-      fetch('/api/song'),
-    ]);
-    if (!useRes.ok || !songRes.ok) { showError('Failed to skip song.'); return; }
-    const { wildcards } = await useRes.json();
+    const [{ wildcards }, track] = await Promise.all([api.useWildcard(), api.getSong()]);
     game.wildcards = wildcards;
-    game.currentTrack = await songRes.json();
-    game.phase = 'placing';
+    game.currentTrack = track;
+    game.phase = PHASE.PLACING;
     game.placedAtIndex = null;
-    game.playState = 'idle';
+    game.playState = PLAY.IDLE;
     game.showAddWildcard = false;
     btnPlayPause.textContent = '▶ PLAY';
     render();
-  } catch {
-    showError('Could not skip song.');
+  } catch (e) {
+    showError(e.message);
   } finally {
     btnSkip.disabled = game.wildcards < 1;
   }
 });
 
-// ADD WILDCARD
+// ─── ADD WILDCARD ──────────────────────────────────────────────────────────
+
 btnAddWildcard.addEventListener('click', async () => {
   hideError();
   try {
-    const res = await fetch('/api/wildcard/add', { method: 'POST' });
-    if (!res.ok) { showError('Failed to add wildcard.'); return; }
-    const { wildcards } = await res.json();
+    const { wildcards } = await api.addWildcard();
     game.wildcards = wildcards;
     render();
-  } catch {
-    showError('Could not reach the server.');
+  } catch (e) {
+    showError(e.message);
   }
 });
 
-// Drag events on staging card
-currentCard.addEventListener('dragstart', (e) => {
-  if (game.phase !== 'placing') { e.preventDefault(); return; }
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', 'card');
-  currentCard.classList.add('dragging');
-});
+// ─── Drag ──────────────────────────────────────────────────────────────────
 
-currentCard.addEventListener('dragend', () => {
-  currentCard.classList.remove('dragging');
-});
+function attachDragHandlers(el) {
+  el.addEventListener('dragstart', (e) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', 'card');
+    el.classList.add('dragging');
+  });
+  el.addEventListener('dragend', () => el.classList.remove('dragging'));
+}
+
+attachDragHandlers(currentCard);
 
 // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -295,11 +325,11 @@ function renderTimeline() {
   const { phase, timeline, placedAtIndex } = game;
 
   for (let i = 0; i <= timeline.length; i++) {
-    if (phase === 'placing' || (phase === 'placed' && placedAtIndex !== i)) {
+    if (phase === PHASE.PLACING || (phase === PHASE.PLACED && placedAtIndex !== i)) {
       timelineEl.appendChild(makeDropZone(i));
-    } else if (phase === 'placed' && placedAtIndex === i) {
+    } else if (phase === PHASE.PLACED && placedAtIndex === i) {
       timelineEl.appendChild(makePendingCard(false, true));
-    } else if (phase === 'wrong' && placedAtIndex === i) {
+    } else if (phase === PHASE.WRONG && placedAtIndex === i) {
       timelineEl.appendChild(makePendingCard(true, false));
     }
 
@@ -323,7 +353,7 @@ function makeDropZone(index) {
     e.preventDefault();
     el.classList.remove('drag-over');
     game.placedAtIndex = index;
-    game.phase = 'placed';
+    game.phase = PHASE.PLACED;
     render();
   });
 
@@ -332,8 +362,7 @@ function makeDropZone(index) {
 
 function makeTimelineCard(card) {
   const el = document.createElement('div');
-  const colorClass = card.isReference ? 'ref-card' : `placed-card placed-card-${card.colorIndex}`;
-  el.className = 'timeline-card ' + colorClass;
+  el.className = 'timeline-card ' + (card.isReference ? 'ref-card' : `placed-card placed-card-${card.colorIndex}`);
 
   const yearEl = document.createElement('div');
   yearEl.className = 'tc-year';
@@ -344,11 +373,7 @@ function makeTimelineCard(card) {
     const refEl = document.createElement('div');
     refEl.className = 'tc-label';
     refEl.textContent = 'REF';
-    el.insertBefore(refEl, yearEl);
-    const anchorEl = document.createElement('div');
-    anchorEl.className = 'tc-label';
-    anchorEl.textContent = 'ANCHOR';
-    el.appendChild(anchorEl);
+    el.appendChild(refEl);
   } else {
     const nameEl = document.createElement('div');
     nameEl.className = 'tc-name';
@@ -371,12 +396,7 @@ function makePendingCard(isWrong, isDraggable) {
 
   if (isDraggable) {
     el.draggable = true;
-    el.addEventListener('dragstart', (e) => {
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', 'card');
-      el.classList.add('dragging');
-    });
-    el.addEventListener('dragend', () => el.classList.remove('dragging'));
+    attachDragHandlers(el);
   }
 
   return el;
@@ -386,35 +406,33 @@ function updateUI() {
   const { phase } = game;
   const hasSong = game.currentTrack !== null;
 
-  currentCard.classList.toggle('hidden', phase !== 'placing');
-  currentCard.draggable = phase === 'placing';
+  currentCard.classList.toggle('hidden', phase !== PHASE.PLACING);
+  currentCard.draggable = phase === PHASE.PLACING;
 
-  songControls.classList.toggle('hidden', !hasSong || phase === 'wrong');
-  btnReveal.disabled = phase !== 'placed';
+  songControls.classList.toggle('hidden', !hasSong || phase === PHASE.WRONG);
+  btnReveal.disabled = phase !== PHASE.PLACED;
 
-  btnNewSong.classList.toggle('hidden', phase !== 'started');
+  btnNewSong.classList.toggle('hidden', phase !== PHASE.STARTED);
 
-  scoreDisplay.classList.toggle('hidden', phase === 'idle');
-  winScreen.classList.toggle('hidden', phase !== 'won');
-  deviceSelector.classList.toggle('hidden', phase !== 'idle');
+  scoreDisplay.classList.toggle('hidden', phase === PHASE.IDLE);
+  winScreen.classList.toggle('hidden', phase !== PHASE.WON);
 
-  wildcardDisplay.classList.toggle('hidden', phase === 'idle');
-  btnReset.classList.toggle('hidden', phase === 'idle' || phase === 'won');
-  stagingArea.classList.toggle('hidden', phase === 'won');
+  wildcardDisplay.classList.toggle('hidden', phase === PHASE.IDLE);
+  btnReset.classList.toggle('hidden', phase === PHASE.IDLE || phase === PHASE.WON);
+  stagingArea.classList.toggle('hidden', phase === PHASE.WON);
 
-  btnSkip.classList.toggle('hidden', !hasSong || phase === 'wrong');
+  btnSkip.classList.toggle('hidden', !hasSong || phase === PHASE.WRONG);
   btnSkip.disabled = game.wildcards < 1;
   btnSkip.title = game.wildcards < 1 ? 'No wildcards available' : 'Skip this song and get a new one (uses 1 wildcard)';
 
-  btnAddWildcard.classList.toggle('hidden', !game.showAddWildcard || phase === 'won');
+  btnAddWildcard.classList.toggle('hidden', !game.showAddWildcard || phase === PHASE.WON);
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
 async function loadDevices() {
   try {
-    const res = await fetch('/api/devices');
-    const devices = await res.json();
+    const devices = await api.getDevices();
     const select = document.getElementById('device-select');
     const current = select.value;
     select.innerHTML = '<option value="">Select a device…</option>';
@@ -425,6 +443,14 @@ async function loadDevices() {
       if (d.device_id === current) opt.selected = true;
       select.appendChild(opt);
     });
+    if (!select.value) {
+      const active = devices.find(d => d.is_active);
+      if (active) {
+        select.value = active.device_id;
+        await api.setDevice(active.device_id).catch(() => {});
+        document.getElementById('btn-start').disabled = false;
+      }
+    }
   } catch {
     showError('Could not load Spotify devices.');
   }
@@ -445,7 +471,7 @@ document.getElementById('device-select').addEventListener('change', async e => {
   document.getElementById('btn-start').disabled = !deviceId;
   if (!deviceId) return;
   try {
-    await fetch(`/api/device/${deviceId}`, { method: 'PUT' });
+    await api.setDevice(deviceId);
   } catch {
     showError('Could not select device.');
     document.getElementById('btn-start').disabled = true;

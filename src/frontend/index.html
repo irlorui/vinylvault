@@ -23,29 +23,34 @@
         <p class="hero-top">CREATE YOUR</p>
         <p class="hero-bottom">VINYL TIMELINE</p>
       </div>
-      <p class="hero-subtitle">Listen to a random tracks from a Spotify playlist and place them on a growing timeline.</p>
-      <div id="device-selector">
-        <select id="device-select">
-          <option value="">Loading devices…</option>
-        </select>
-        <button id="btn-refresh-devices" title="Refresh devices">↻</button>
-      </div>
-      <p id="start-hint">PICK A DEVICE TO BEGIN</p>
+      <p class="hero-subtitle">Listen to tracks from a Spotify playlist and place them on a timeline.</p>
       <button id="btn-config">⚙ CONFIG</button>
       <div id="config-panel" class="hidden">
-        <label class="config-label" for="win-score-select">POINTS TO WIN</label>
-        <select id="win-score-select">
-          <option value="4" selected>4</option>
-          <option value="5">5</option>
-          <option value="6">6</option>
-          <option value="7">7</option>
-          <option value="8">8</option>
-          <option value="9">9</option>
-          <option value="10">10</option>
-        </select>
-        <span class="config-divider">|</span>
-        <label class="config-label" for="player-name-input">PLAYER NAME</label>
-        <input id="player-name-input" type="text" value="Player 1" maxlength="20" spellcheck="false">
+        <div class="config-row">
+          <label class="config-label" for="device-select">DEVICE</label>
+          <div id="device-selector">
+            <select id="device-select">
+              <option value="">Loading devices…</option>
+            </select>
+            <button id="btn-refresh-devices" title="Refresh devices">↻</button>
+          </div>
+        </div>
+        <div class="config-row">
+          <label class="config-label" for="win-score-select">POINTS TO WIN</label>
+          <select id="win-score-select">
+            <option value="4" selected>4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+          </select>
+        </div>
+        <div class="config-row">
+          <label class="config-label" for="player-name-input">PLAYER NAME</label>
+          <input id="player-name-input" type="text" value="Player 1" maxlength="20" spellcheck="false">
+        </div>
       </div>
       <button id="btn-start" disabled>START</button>
     </div>
@@ -95,7 +100,7 @@
         </div>
         <div id="action-buttons">
           <button id="btn-new-song" class="hidden">NEW SONG</button>
-          <button id="btn-add-wildcard" class="hidden" title="Award a wildcard for correctly naming the song title and artist">+1 WILDCARD<span class="wc-icon">✦</span></button>
+          <button id="btn-add-wildcard" class="hidden" title="Award a wildcard for naming the song title and artist">+1 WILDCARD<span class="wc-icon"> ✦ </span></button>
         </div>
       </div>
     </div>

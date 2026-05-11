@@ -122,12 +122,20 @@ button:disabled { opacity: 0.3; cursor: default; }
 
 #config-panel {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   background: #1c1c1c;
   border: 1px solid #333;
-  border-radius: 50px;
-  padding: 4px 4px 4px 16px;
-  gap: 0.75rem;
+  border-radius: 12px;
+  padding: 16px;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 360px;
+}
+
+.config-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .config-label {
@@ -150,20 +158,14 @@ button:disabled { opacity: 0.3; cursor: default; }
 
 #win-score-select:focus { outline: none; }
 
-.config-divider {
-  color: #444;
-  font-size: 1.2rem;
-  user-select: none;
-}
-
 #player-name-input {
   background: transparent;
   color: #e0e0e0;
   border: none;
   border-bottom: 1px solid #444;
   padding: 4px 2px;
-  font-size: 1.5rem;
-  width: 120px;
+  font-size: 0.9rem;
+  width: 100%;
 }
 
 #player-name-input:focus { outline: none; border-bottom-color: #888; }
@@ -201,31 +203,19 @@ button:disabled { opacity: 0.3; cursor: default; }
   font-weight: 400;
 }
 
-#start-hint {
-  font-size: 0.7rem;
-  letter-spacing: 0.18em;
-  color: #555;
-  text-transform: uppercase;
-}
-
 #device-selector {
   display: flex;
   align-items: center;
-  background: #1c1c1c;
-  border: 1px solid #333;
-  border-radius: 50px;
-  padding: 4px 4px 4px 16px;
-  width: 100%;
-  max-width: 360px;
-  gap: 0;
+  gap: 0.5rem;
 }
 
 #device-select {
   flex: 1;
   background: transparent;
   color: #e0e0e0;
-  border: none;
-  padding: 6px 4px;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 6px 8px;
   font-size: 0.85rem;
   cursor: pointer;
 }
@@ -459,11 +449,11 @@ button:disabled { opacity: 0.3; cursor: default; }
 .placed-card-6 { background: #FFEA00; color: #111; }    /* electric yellow */
 .placed-card-7 { background: #1DE9B6; color: #111; }    /* neon teal */
 .placed-card-8 { background: #FF1744; color: #fdf8ee; } /* neon red */
-.placed-card-9 { background: #1ed760; color: #111; }    /* malachite */
+.placed-card-9 { background: #FF8360; color: #fdf8ee; } /* coral */
 
 .pending-card {
-  background: #e0d8c8;
-  border: 2px dashed #b0a898;
+  background: #e9e5dc;
+  border: 2px #b0a898;
   color: #aaa;
 }
 
@@ -564,8 +554,8 @@ button:disabled { opacity: 0.3; cursor: default; }
 #current-card {
   width: 180px;
   height: 240px;
-  background: #e0d8c8;
-  border: 2px dashed #b0a898;
+  background: #e9e5dc;
+  border: 2px #b0a898;
   border-radius: 20px;
   display: flex;
   flex-direction: column;
