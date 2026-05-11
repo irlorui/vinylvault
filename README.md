@@ -77,7 +77,8 @@ docs/             # documentation on project
 | `POST` | `/api/players/init` | Initialise 1–4 named players, reset all state |
 | `POST` | `/api/turn/next` | Advance to next player's turn |
 | `POST` | `/api/score/add` | Add 1 point for current player |
-| `GET`  | `/api/song` | Random track from the cached playlist |
+| `GET`  | `/api/song` | Random track; optional `?playlists=` and `?exclude=` filters |
+| `GET`  | `/api/playlists` | List configured playlists (ID + name) |
 | `GET`  | `/api/devices` | List available Spotify devices |
 | `PUT`  | `/api/device/{device_id}` | Pin a device for playback |
 | `POST` | `/api/play/{track_id}` | Start playback on the pinned device |

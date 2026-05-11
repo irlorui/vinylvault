@@ -5,13 +5,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [Unreleased]
+## [1.2.0] — 2026-05-11
 
 ### Added
 - Multi-player support (1–4 players): each player has an independent timeline, score, and wildcard pool; players take turns in CONFIG order with score chips in the topbar showing `current/target`; NEXT TURN button appears after a correct reveal; wrong-reveal popup for 3+ players announces the next player by name; new routes `POST /api/players/init` and `POST /api/turn/next` manage turn state
+- Multi-playlist support: define multiple Spotify playlists via `PLAYLIST_IDS` (comma-separated) in `.config/.env`; tracks are merged into a deduped pool at startup; new `GET /api/playlists` endpoint returns playlist IDs and names; `GET /api/song` accepts an optional `?playlists=` filter; CONFIG panel shows a checkbox per playlist so players can include/exclude playlists before a game
+- Playlist warning in docs (README and game_rules.md) about compilation albums and classical music producing incorrect release years, with fix guidance
+- GitHub issue templates (bug report and feature request) with Impact & Priority checkboxes and acceptance criteria section
 
 ### Changed
 - Score and wildcard routes (`/api/score/add`, `/api/wildcard/add`, `/api/wildcard/use`) now return `PlayersResponse` (all players' state + current player index) instead of single-player `ScoreResponse`/`WildcardResponse`
+- `PLAYLIST_ID` env var renamed to `PLAYLIST_IDS` (comma-separated list)
 
 ### Removed
 - `POST /api/score/reset` and `POST /api/wildcard/reset` — superseded by `POST /api/players/init`
@@ -19,8 +23,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - Accessibility improvements: focus rings, `aria-label` and `aria-live` attributes, `role="alert"` on error messages
 - Replaced biased `sort(() => Math.random() - 0.5)` card colour shuffle with Fisher-Yates algorithm
-
----
 
 ## [1.1.0] — 2026-05-11
 
