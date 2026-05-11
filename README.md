@@ -1,6 +1,6 @@
 # 🎵 VinylVault
 
-A party game for music nerds. 
+A party game for music nerds!
 
 Listen to a random track from your Spotify playlist and place it in the right spot on a growing timeline — no peeking at the year!
 
@@ -36,16 +36,17 @@ make run
 
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser. On first run, Spotify will open a browser tab asking you to authorise the app — follow the prompt and you're good to go.
 
-> **Note:** Remember to be logged in either in Web browser or Spotify Desktop in at least one of your devices.
+> **Note:** Remember to be logged-in either in Web browser or Spotify Desktop in at least one of your devices.
 
 ---
 
 ## 🎮 How to play
 
-1. Click **START** — a random reference year is placed on your timeline as the anchor card.
-2. Click **NEW SONG** — a face-down card appears. Listen to the track and drag the card to where you think it belongs in the timeline.
-3. Click **REVEAL** — if your placement is chronologically correct the card stays; if not, it disappears.
-4. Reach **4 correct cards** (including the reference) and you win! 🏆
+1. Click **CONFIG** - customise the game with the device to use, the target points to win and the player names.
+2. Click **START** — a random reference year is placed on your timeline as the anchor card.
+3. Click **NEW SONG** — a face-down card appears. Listen to the track and drag the card to where you think it belongs in the timeline.
+4. Click **REVEAL** — if your placement is chronologically correct the card stays; if not, it disappears.
+5. Reach the **Points to win** target (default: 10) (including the reference) and you win! 🏆
 
 Full rules and a game-flow diagram are in [docs/game_rules.md](docs/game_rules.md).
 
