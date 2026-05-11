@@ -1,4 +1,4 @@
-# 🎵 VinylVault — How to Play
+# 🎼🎸 VinylVault — How to Play
 
 VinylVault is a music trivia game where you build a timeline of songs by ear.
 Just listen and guess where each track belongs in history!
