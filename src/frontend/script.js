@@ -49,31 +49,35 @@ const game = {
   wildcards: 0,
   showAddWildcard: false,
   colorPool: [],
-  winScore: parseInt(document.getElementById('win-score-select').value, 10),
+  winScore: parseInt(document.getElementById('win-score-select').value, 10), // read before DOM refs freeze
   playerName: 'Player 1',
 };
 
 // ─── DOM refs ──────────────────────────────────────────────────────────────
 
-const startScreen    = document.getElementById('start-screen');
-const gameScreen     = document.getElementById('game-screen');
-const timelineEl     = document.getElementById('timeline');
-const currentCard    = document.getElementById('current-card');
-const songControls   = document.getElementById('song-controls');
-const btnNewSong     = document.getElementById('btn-new-song');
-const btnPlayPause   = document.getElementById('btn-play-pause');
-const btnReveal      = document.getElementById('btn-reveal');
-const btnSkip        = document.getElementById('btn-skip');
-const btnAddWildcard = document.getElementById('btn-add-wildcard');
-const stagingArea    = document.getElementById('staging-area');
-const btnConfig      = document.getElementById('btn-config');
-const configPanel    = document.getElementById('config-panel');
-const errorMsg       = document.getElementById('error-msg');
-const scoreDisplay   = document.getElementById('score-display');
-const wildcardDisplay = document.getElementById('wildcard-display');
-const wildcardCount  = document.getElementById('wildcard-count');
-const winScreen      = document.getElementById('win-screen');
-const btnReset       = document.getElementById('btn-home');
+const startScreen      = document.getElementById('start-screen');
+const gameScreen       = document.getElementById('game-screen');
+const timelineEl       = document.getElementById('timeline');
+const currentCard      = document.getElementById('current-card');
+const songControls     = document.getElementById('song-controls');
+const btnNewSong       = document.getElementById('btn-new-song');
+const btnPlayPause     = document.getElementById('btn-play-pause');
+const btnReveal        = document.getElementById('btn-reveal');
+const btnSkip          = document.getElementById('btn-skip');
+const btnAddWildcard   = document.getElementById('btn-add-wildcard');
+const stagingArea      = document.getElementById('staging-area');
+const btnConfig        = document.getElementById('btn-config');
+const configPanel      = document.getElementById('config-panel');
+const errorMsg         = document.getElementById('error-msg');
+const scoreDisplay     = document.getElementById('score-display');
+const wildcardDisplay  = document.getElementById('wildcard-display');
+const wildcardCount    = document.getElementById('wildcard-count');
+const winScreen        = document.getElementById('win-screen');
+const btnReset         = document.getElementById('btn-home');
+const btnStart          = document.getElementById('btn-start');
+const playerNameDisplay = document.getElementById('player-name-display');
+const winScoreStat      = document.getElementById('win-score-stat');
+const deviceSelect      = document.getElementById('device-select');
 
 // ─── Config ────────────────────────────────────────────────────────────────
 
@@ -89,12 +93,12 @@ document.getElementById('win-score-select').addEventListener('change', e => {
 
 document.getElementById('player-name-input').addEventListener('input', e => {
   game.playerName = e.target.value || 'Player 1';
-  document.getElementById('player-name-display').textContent = game.playerName;
+  playerNameDisplay.textContent = game.playerName;
 });
 
 // ─── START ─────────────────────────────────────────────────────────────────
 
-document.getElementById('btn-start').addEventListener('click', async () => {
+btnStart.addEventListener('click', async () => {
   hideError();
   try {
     const [{ year }, { score }, { wildcards }] = await Promise.all([
@@ -110,10 +114,9 @@ document.getElementById('btn-start').addEventListener('click', async () => {
     game.colorPool = shuffledColors();
     game.timeline = [{ year, isReference: true, name: null, artist: null, track_id: null }];
 
-    document.getElementById('player-name-display').textContent = game.playerName;
     startScreen.classList.add('hidden');
     gameScreen.classList.remove('hidden');
-    render();
+    render(); // render() → updateUI() sets playerNameDisplay
   } catch (e) {
     showError(e.message);
   }
@@ -135,7 +138,6 @@ btnNewSong.addEventListener('click', async () => {
     game.placedAtIndex = null;
     game.playState = PLAY.IDLE;
     game.showAddWildcard = false;
-    btnPlayPause.textContent = '▶ PLAY';
     render();
   } catch (e) {
     showError(e.message);
@@ -154,16 +156,14 @@ btnPlayPause.addEventListener('click', async () => {
     if (game.playState === PLAY.IDLE) {
       await api.play(game.currentTrack.track_id);
       game.playState = PLAY.PLAYING;
-      btnPlayPause.textContent = '⏸ PAUSE';
     } else if (game.playState === PLAY.PLAYING) {
       await api.pause();
       game.playState = PLAY.PAUSED;
-      btnPlayPause.textContent = '▶ PLAY';
     } else {
       await api.resume();
       game.playState = PLAY.PLAYING;
-      btnPlayPause.textContent = '⏸ PAUSE';
     }
+    render();
   } catch (e) {
     showError(e.message);
   }
@@ -205,7 +205,7 @@ btnReveal.addEventListener('click', async () => {
         game.playState = PLAY.IDLE;
       }
       game.phase = PHASE.WON;
-      document.getElementById('win-score-stat').textContent = `${game.score} / ${game.winScore}`;
+      winScoreStat.textContent = `${game.score} / ${game.winScore}`;
     } else {
       game.showAddWildcard = true;
       game.phase = PHASE.STARTED;
@@ -236,12 +236,10 @@ function resetGame() {
   game.showAddWildcard = false;
   game.colorPool = [];
   game.playState = PLAY.IDLE;
-  btnPlayPause.textContent = '▶ PLAY';
   gameScreen.classList.add('hidden');
   winScreen.classList.add('hidden');
   startScreen.classList.remove('hidden');
-  const selectedDevice = document.getElementById('device-select').value;
-  document.getElementById('btn-start').disabled = !selectedDevice;
+  btnStart.disabled = !deviceSelect.value;
 }
 
 document.getElementById('btn-play-again').addEventListener('click', resetGame);
@@ -265,7 +263,6 @@ btnSkip.addEventListener('click', async () => {
     game.placedAtIndex = null;
     game.playState = PLAY.IDLE;
     game.showAddWildcard = false;
-    btnPlayPause.textContent = '▶ PLAY';
     render();
   } catch (e) {
     showError(e.message);
@@ -302,7 +299,15 @@ attachDragHandlers(currentCard);
 
 // ─── Render ────────────────────────────────────────────────────────────────
 
-function shuffledColors() { return [...Array(10).keys()].sort(() => Math.random() - 0.5); }
+/** Returns indices 0–9 in a uniformly random order (Fisher-Yates). */
+function shuffledColors() {
+  const arr = [...Array(10).keys()];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 
 function render() {
   renderTimeline();
@@ -413,6 +418,8 @@ function updateUI() {
   songControls.classList.toggle('hidden', !hasSong || phase === PHASE.WRONG);
   btnReveal.disabled = phase !== PHASE.PLACED;
 
+  btnPlayPause.textContent = game.playState === PLAY.PLAYING ? '⏸ PAUSE' : '▶ PLAY';
+
   btnNewSong.classList.toggle('hidden', phase !== PHASE.STARTED);
 
   scoreDisplay.classList.toggle('hidden', phase === PHASE.IDLE);
@@ -427,29 +434,34 @@ function updateUI() {
   btnSkip.title = game.wildcards < 1 ? 'No wildcards available' : 'Skip this song and get a new one (uses 1 wildcard)';
 
   btnAddWildcard.classList.toggle('hidden', !game.showAddWildcard || phase === PHASE.WON);
+
+  playerNameDisplay.textContent = game.playerName;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
+/**
+ * Fetches available Spotify devices and populates the device select.
+ * Auto-selects the active device and enables the start button if found.
+ */
 async function loadDevices() {
   try {
     const devices = await api.getDevices();
-    const select = document.getElementById('device-select');
-    const current = select.value;
-    select.innerHTML = '<option value="">Select a device…</option>';
+    const current = deviceSelect.value;
+    deviceSelect.innerHTML = '<option value="">Select a device…</option>';
     devices.forEach(d => {
       const opt = document.createElement('option');
       opt.value = d.device_id;
       opt.textContent = d.name + (d.is_active ? ' ✓' : '');
       if (d.device_id === current) opt.selected = true;
-      select.appendChild(opt);
+      deviceSelect.appendChild(opt);
     });
-    if (!select.value) {
+    if (!deviceSelect.value) {
       const active = devices.find(d => d.is_active);
       if (active) {
-        select.value = active.device_id;
+        deviceSelect.value = active.device_id;
         await api.setDevice(active.device_id).catch(() => {});
-        document.getElementById('btn-start').disabled = false;
+        btnStart.disabled = false;
       }
     }
   } catch {
@@ -467,18 +479,18 @@ function hideError() {
   errorMsg.classList.add('hidden');
 }
 
-document.getElementById('device-select').addEventListener('change', async e => {
+deviceSelect.addEventListener('change', async e => {
   const deviceId = e.target.value;
-  document.getElementById('btn-start').disabled = !deviceId;
+  btnStart.disabled = !deviceId;
   if (!deviceId) return;
   try {
     await api.setDevice(deviceId);
   } catch {
     showError('Could not select device.');
-    document.getElementById('btn-start').disabled = true;
+    btnStart.disabled = true;
   }
 });
 
-document.getElementById('btn-refresh-devices').addEventListener('click', loadDevices);
+document.getElementById('btn-refresh-devices').addEventListener('click', loadDevices); // no cached ref needed — event wired once
 
 loadDevices();

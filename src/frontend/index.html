@@ -32,7 +32,7 @@
             <select id="device-select">
               <option value="">Loading devices…</option>
             </select>
-            <button id="btn-refresh-devices" title="Refresh devices">↻</button>
+            <button id="btn-refresh-devices" title="Refresh devices" aria-label="Refresh devices">↻</button>
           </div>
         </div>
         <div class="config-row" title="Number of points needed to win the game">
@@ -105,7 +105,7 @@
       </div>
     </div>
 
-    <p id="error-msg" class="error hidden"></p>
+    <p id="error-msg" class="error hidden" role="alert" aria-live="assertive"></p>
   </main>
 
   <script src="script.js"></script>
