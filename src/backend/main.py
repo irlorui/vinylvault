@@ -188,10 +188,13 @@ async def set_device(device_id: str, request: Request) -> None:
 @app.post("/api/play/{track_id}", status_code=204)
 async def play_song(
     track_id: str,
+    tracks: list[dict] = Depends(get_tracks),
     sp: spotipy.Spotify = Depends(get_sp),
     device_id: str | None = Depends(get_device_id),
 ) -> None:
     """Trigger playback of the given track on the pinned Spotify device."""
+    if track_id not in {t["id"] for t in tracks}:
+        raise HTTPException(status_code=404, detail="Track not in playlist.")
     await run_in_threadpool(play_track, sp, track_id, device_id)
 
 

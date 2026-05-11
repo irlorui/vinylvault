@@ -22,7 +22,7 @@ def _spotify_op():
     except SpotifyException as e:
         if e.http_status == 403:
             raise HTTPException(status_code=403, detail="Spotify Premium required.")
-        raise HTTPException(status_code=502, detail=f"Spotify error: {e.msg}") from e
+        raise HTTPException(status_code=502, detail="Spotify error.") from e
 
 
 def get_spotify_client() -> spotipy.Spotify:

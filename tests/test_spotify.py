@@ -50,7 +50,7 @@ def test_spotify_op_converts_non_403_detail_message():
         with _spotify_op():
             raise exc
     assert exc_info.value.status_code == 502
-    assert "Rate limit exceeded" in exc_info.value.detail
+    assert exc_info.value.detail == "Spotify error."
 
 
 # ─── fetch_all_tracks ────────────────────────────────────────────────────────

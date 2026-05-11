@@ -167,6 +167,12 @@ def test_play_returns_503_without_device(client):
     assert res.status_code == 503
 
 
+def test_play_returns_404_for_unknown_track(client):
+    client.put("/api/device/dev1")
+    res = client.post("/api/play/not_a_real_track")
+    assert res.status_code == 404
+
+
 def test_play_returns_204_with_device(client, mock_sp):
     client.put("/api/device/dev1")
     res = client.post("/api/play/track1")

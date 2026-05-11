@@ -3,7 +3,7 @@
 setup:
 	uv sync
 run:
-	uv run uvicorn src.backend.main:app --reload
+	uv run uvicorn src.backend.main:app --reload --host 127.0.0.1
 
 pre-commit:
 	uv run pre-commit run --all-files
