@@ -52,11 +52,14 @@ def fetch_all_tracks(sp: spotipy.Spotify, playlist_id: str) -> list[dict]:
     return tracks
 
 
-def get_random_track(tracks: list[dict]) -> TrackResponse:
-    """Return a random track from a pre-fetched list."""
-    if not tracks:
+def get_random_track(
+    tracks: list[dict], exclude: set[str] | None = None
+) -> TrackResponse:
+    """Return a random track from a pre-fetched list, skipping any excluded IDs."""
+    available = [t for t in tracks if t["id"] not in exclude] if exclude else tracks
+    if not available:
         raise HTTPException(status_code=404, detail="No playable tracks in playlist.")
-    track = random.choice(tracks)
+    track = random.choice(available)
     return TrackResponse(
         track_id=track["id"],
         name=track["name"],

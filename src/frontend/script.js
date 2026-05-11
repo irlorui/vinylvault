@@ -26,7 +26,10 @@ const api = {
   resetWildcards: () => api._post('/api/wildcard/reset'),
   addWildcard:    () => api._post('/api/wildcard/add'),
   useWildcard:    () => api._post('/api/wildcard/use'),
-  getSong:        () => api._get('/api/song'),
+  getSong: () => {
+    const used = game.timeline.map(c => c.track_id).filter(Boolean).join(',');
+    return api._get(used ? `/api/song?exclude=${used}` : '/api/song');
+  },
   getDevices:     () => api._get('/api/devices'),
   setDevice:      (id) => fetch(`/api/device/${id}`, { method: 'PUT' }),
   play:           (trackId) => api._post(`/api/play/${trackId}`),

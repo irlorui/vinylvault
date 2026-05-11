@@ -34,12 +34,13 @@ src/
   backend/
     config.py     # loads .config/.env via pydantic-settings; Settings class + @lru_cache get_settings()
     models.py     # Pydantic response models: TrackResponse, ReferenceYearResponse, ScoreResponse, DeviceResponse
-    score.py      # GameScore class: reset(), add(), won property; WIN_SCORE constant
+    score.py      # GameScore (reset/add) and GameWildcard (add/use/reset) classes
     spotify.py    # spotipy client factory, fetch_all_tracks (paginated), get_random_track(tracks),
                   # get_devices, play_track, pause_track, resume_track;
                   # _spotify_op context manager wraps playback calls (converts 403 → HTTPException)
-    main.py       # FastAPI app: lifespan initializes sp + tracks + score + device_id on app.state;
-                  # all API routes + static mount; _score_response() helper; _CURRENT_YEAR constant
+    main.py       # FastAPI app: lifespan initializes sp + tracks + score + wildcards + device_id on
+                  # app.state; five Depends() injection functions (get_score, get_wildcards, get_sp,
+                  # get_tracks, get_device_id); all API routes + static mount; _CURRENT_YEAR constant
   frontend/
     index.html / script.js / styles.css   # served at "/" by StaticFiles
 docs/
@@ -49,7 +50,7 @@ docs/
   images/game_mechanism.png
 ```
 
-**Key architectural detail:** the `spotipy.Spotify` client is blocking, so all calls go through `run_in_threadpool`. The lifespan initializes four things on `app.state`: `sp` (Spotify client), `tracks` (full playlist cached at startup via paginated `fetch_all_tracks`), `score` (GameScore), and `device_id` (pinned playback device, starts as `None`). Caching `tracks` at startup means `GET /api/song` makes no Spotify API call per request and handles playlists of any size.
+**Key architectural detail:** the `spotipy.Spotify` client is blocking, so all calls go through `run_in_threadpool`. The lifespan initializes five things on `app.state`: `sp` (Spotify client), `tracks` (full playlist cached at startup via paginated `fetch_all_tracks`), `score` (GameScore), `wildcards` (GameWildcard), and `device_id` (pinned playback device, starts as `None`). Caching `tracks` at startup means `GET /api/song` makes no Spotify API call per request and handles playlists of any size.
 
 **Spotify OAuth:** uses `SpotifyOAuth` with `scope = "user-read-playback-state user-modify-playback-state"`. The token cache lives at `.config/.cache`. Playback requires Spotify Premium and a pinned device (set via `PUT /api/device/{device_id}`).
 
@@ -65,7 +66,7 @@ docs/
 | `POST` | `/api/pause` | Pause playback |
 | `POST` | `/api/resume` | Resume playback |
 | `POST` | `/api/score/reset` | Reset score to 1 (reference card) → `ScoreResponse` |
-| `POST` | `/api/score/add` | Add 1 point → `ScoreResponse(score, won)` |
+| `POST` | `/api/score/add` | Add 1 point → `ScoreResponse(score)` |
 | `POST` | `/api/wildcard/reset` | Reset wildcard count to 0 → `WildcardResponse` |
 | `POST` | `/api/wildcard/add` | Award 1 wildcard → `WildcardResponse` |
 | `POST` | `/api/wildcard/use` | Spend 1 wildcard → `WildcardResponse` (409 if none) |
@@ -77,7 +78,7 @@ docs/
 ```
 idle → started → placing → placed → started  (correct reveal)
                                   → wrong → started  (wrong reveal, 1.5 s timeout)
-                          → won  (score reaches WIN_SCORE)
+                          → won  (score reaches game.winScore)
 ```
 
 - **`idle`**: only START button shown
@@ -91,7 +92,15 @@ idle → started → placing → placed → started  (correct reveal)
 
 ## Score
 
-`GameScore` (in `score.py`) lives on `app.state.score`. `WIN_SCORE = 4` controls the win threshold and is also mirrored as a constant in `script.js`. Reference card counts as 1 point on START; each correct REVEAL adds 1. Wrong placements do not score.
+`GameScore` (in `score.py`) lives on `app.state.score`. The win threshold is `game.winScore` in the frontend, initialised from the `#win-score-select` DOM value (default 10, configurable via the CONFIG panel before the game starts). The backend has no win threshold — it only tracks `score.value`. Reference card counts as 1 point on START; each correct REVEAL adds 1. Wrong placements do not score.
+
+## Frontend structure (script.js)
+
+- `PHASE` and `PLAY` are frozen constant objects at the top; use `PHASE.PLACING` etc., never string literals.
+- `api` object consolidates all `fetch` calls via `_get`/`_post` helpers that parse errors and throw.
+- `game` object holds all mutable state; `render()` is the single re-render entry point.
+- `attachDragHandlers(el)` is a shared helper — call it for any draggable card element.
+- `game.winScore` is read from `#win-score-select` on page load and updated by its `change` listener.
 
 ## Frontend drag-and-drop
 

@@ -110,9 +110,13 @@ async def add_score(score: GameScore = Depends(get_score)) -> ScoreResponse:
 
 
 @app.get("/api/song", response_model=TrackResponse)
-async def get_song(tracks: list = Depends(get_tracks)) -> TrackResponse:
-    """Return a random track from the cached playlist."""
-    return get_random_track(tracks)
+async def get_song(
+    tracks: list = Depends(get_tracks),
+    exclude: str = "",
+) -> TrackResponse:
+    """Return a random track from the cached playlist, excluding already-placed IDs."""
+    exclude_ids = set(filter(None, exclude.split(","))) if exclude else None
+    return get_random_track(tracks, exclude_ids)
 
 
 @app.get("/api/devices", response_model=list[DeviceResponse])
