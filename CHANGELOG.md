@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.2.1] — 2026-05-11
+
+### Fixed
+- Enforce loopback binding (`--host 127.0.0.1`) in `make run` to prevent accidental network exposure of unauthenticated Spotify endpoints
+- Validate `track_id` in `POST /api/play/{track_id}` against cached playlist tracks — returns 404 for IDs not in the configured playlists
+- Suppress Spotify API error messages from 502 responses to avoid leaking internal API details to clients
+- Add `@lru_cache` to `get_settings` to avoid re-reading `.env` on every call
+- Reject empty and whitespace-only player names in `POST /api/players/init` (422)
+- Guard `get_playlist_name` against `None` result from `sp.playlist()`
+- Apply track-validity filter before exclude filter in `get_random_track`; `exclude=set()` now correctly excludes nothing
+- Filter empty segments from `?playlists=` query parameter
+- Fix skip-duplicate bug: current track ID is excluded when fetching the replacement song so the same track cannot be re-drawn
+
+---
+
 ## [1.2.0] — 2026-05-11
 
 ### Added
