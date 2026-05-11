@@ -33,14 +33,16 @@ VinylVault is a music timeline game: players listen to random tracks from a Spot
 src/
   backend/
     config.py     # loads .config/.env via pydantic-settings; Settings class + @lru_cache get_settings()
-    models.py     # Pydantic response models: TrackResponse, ReferenceYearResponse, ScoreResponse, DeviceResponse
-    score.py      # GameScore (reset/add) and GameWildcard (add/use/reset) classes
+    models.py     # Pydantic response models: TrackResponse, ReferenceYearResponse, DeviceResponse,
+                  # PlayerState, PlayersResponse, InitPlayersRequest
+    score.py      # GameScore (reset/add), GameWildcard (add/use/reset), Player, and GamePlayers classes
     spotify.py    # spotipy client factory, fetch_all_tracks (paginated), get_random_track(tracks),
                   # get_devices, play_track, pause_track, resume_track;
                   # _spotify_op context manager wraps playback calls (converts 403 → HTTPException)
-    main.py       # FastAPI app: lifespan initializes sp + tracks + score + wildcards + device_id on
-                  # app.state; five Depends() injection functions (get_score, get_wildcards, get_sp,
-                  # get_tracks, get_device_id); all API routes + static mount; _CURRENT_YEAR constant
+    main.py       # FastAPI app: lifespan initializes sp + tracks + players + device_id on
+                  # app.state; four Depends() injection functions (get_players, get_sp,
+                  # get_tracks, get_device_id); all API routes + static mount;
+                  # _CURRENT_YEAR and _EARLIEST_YEAR constants
   frontend/
     index.html / script.js / styles.css   # served at "/" by StaticFiles
 docs/
@@ -50,7 +52,7 @@ docs/
   images/game_mechanism.png
 ```
 
-**Key architectural detail:** the `spotipy.Spotify` client is blocking, so all calls go through `run_in_threadpool`. The lifespan initializes five things on `app.state`: `sp` (Spotify client), `tracks` (full playlist cached at startup via paginated `fetch_all_tracks`), `score` (GameScore), `wildcards` (GameWildcard), and `device_id` (pinned playback device, starts as `None`). Caching `tracks` at startup means `GET /api/song` makes no Spotify API call per request and handles playlists of any size.
+**Key architectural detail:** the `spotipy.Spotify` client is blocking, so all calls go through `run_in_threadpool`. The lifespan initializes four things on `app.state`: `sp` (Spotify client), `tracks` (full playlist cached at startup via paginated `fetch_all_tracks`), `players` (GamePlayers — multi-player state), and `device_id` (pinned playback device, starts as `None`). Caching `tracks` at startup means `GET /api/song` makes no Spotify API call per request and handles playlists of any size.
 
 **Spotify OAuth:** uses `SpotifyOAuth` with `scope = "user-read-playback-state user-modify-playback-state"`. The token cache lives at `.config/.cache`. Playback requires Spotify Premium and a pinned device (set via `PUT /api/device/{device_id}`).
 
@@ -65,42 +67,47 @@ docs/
 | `POST` | `/api/play/{track_id}` | Start playback on the pinned device (503 if none pinned) |
 | `POST` | `/api/pause` | Pause playback |
 | `POST` | `/api/resume` | Resume playback |
-| `POST` | `/api/score/reset` | Reset score to 1 (reference card) → `ScoreResponse` |
-| `POST` | `/api/score/add` | Add 1 point → `ScoreResponse(score)` |
-| `POST` | `/api/wildcard/reset` | Reset wildcard count to 0 → `WildcardResponse` |
-| `POST` | `/api/wildcard/add` | Award 1 wildcard → `WildcardResponse` |
-| `POST` | `/api/wildcard/use` | Spend 1 wildcard → `WildcardResponse` (409 if none) |
+| `POST` | `/api/players/init` | Initialise 1–4 named players, reset all state → `PlayersResponse` |
+| `POST` | `/api/turn/next` | Advance to next player → `PlayersResponse` |
+| `POST` | `/api/score/add` | Add 1 point for current player → `PlayersResponse` |
+| `POST` | `/api/wildcard/add` | Award 1 wildcard to current player → `PlayersResponse` |
+| `POST` | `/api/wildcard/use` | Spend 1 wildcard for current player → `PlayersResponse` (409 if none) |
 
 ## Game state machine (frontend)
 
 `game.phase` drives all UI visibility in `script.js`:
 
 ```
-idle → started → placing → placed → started  (correct reveal)
-                                  → wrong → started  (wrong reveal, 1.5 s timeout)
+idle → started → placing → placed → started  (correct reveal → NEXT TURN or NEW SONG)
+                                  → wrong → started  (wrong reveal: popup for 3+ players, 1.5s auto for ≤2)
                           → won  (score reaches game.winScore)
 ```
 
 - **`idle`**: only START button shown
-- **`started`**: timeline visible, NEW SONG button shown
+- **`started`**: timeline visible; NEW SONG shown normally, NEXT TURN shown when `awaitingNextTurn` is set
 - **`placing`**: staging card (face-down, draggable) + drop zones in timeline
 - **`placed`**: card moved into timeline (still draggable to change position), REVEAL enabled
-- **`wrong`**: pending card animates red then disappears
+- **`wrong`**: pending card animates red then disappears; wrong popup shown for 3+ players
 - **`won`**: full-screen congratulations overlay; PLAY AGAIN resets to `idle`
 
-`render()` calls `renderTimeline()` + `renderScore()` + `updateUI()` on every state change.
+`render()` calls `renderTimeline()` + `renderPlayers()` + `updateUI()` on every state change.
 
-## Score
+## Score and multi-player state
 
-`GameScore` (in `score.py`) lives on `app.state.score`. The win threshold is `game.winScore` in the frontend, initialised from the `#win-score-select` DOM value (default 10, configurable via the CONFIG panel before the game starts). The backend has no win threshold — it only tracks `score.value`. Reference card counts as 1 point on START; each correct REVEAL adds 1. Wrong placements do not score.
+`GamePlayers` (in `score.py`) lives on `app.state.players`. Each `Player` has a `GameScore` and a `GameWildcard`. The win threshold is `game.winScore` in the frontend, initialised from the `#win-score-select` DOM value (default 10, configurable via the CONFIG panel before the game starts). The backend has no win threshold — it only tracks per-player scores. Reference card counts as 1 point on START; each correct REVEAL adds 1. Wrong placements do not score.
+
+After a correct reveal the current player's turn doesn't end immediately — `game.awaitingNextTurn` blocks NEW SONG and shows NEXT TURN instead, giving the player time to claim +1 WILDCARD first. Wrong reveals auto-advance after 1.5 s for ≤2 players; for 3+ players a popup is shown so the next player's name is announced before CONTINUE dismisses it.
 
 ## Frontend structure (script.js)
 
 - `PHASE` and `PLAY` are frozen constant objects at the top; use `PHASE.PLACING` etc., never string literals.
 - `api` object consolidates all `fetch` calls via `_get`/`_post` helpers that parse errors and throw.
-- `game` object holds all mutable state; `render()` is the single re-render entry point.
+- `game` object holds all mutable state: `players[]`, `currentPlayerIndex`, `phase`, `winScore`, `awaitingNextTurn`; `render()` is the single re-render entry point.
+- `currentPlayer()` returns `game.players[game.currentPlayerIndex]`.
+- `syncPlayersFromResponse(data)` syncs backend `PlayersResponse` (scores, wildcards, current index) into `game.players[]` without touching frontend-only fields (timeline, colorPool).
 - `attachDragHandlers(el)` is a shared helper — call it for any draggable card element.
 - `game.winScore` is read from `#win-score-select` on page load and updated by its `change` listener.
+- Each player has their own `timeline` array and `colorPool` (assigned colors for placed cards).
 
 ## Frontend drag-and-drop
 
