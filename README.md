@@ -73,7 +73,7 @@ docs/             # documentation on project
 |--------|------|-------------|
 | `GET`  | `/api/reference-year` | Random anchor year (1960 – now) |
 | `POST` | `/api/score/reset` | Reset score to 1 (new game) |
-| `POST` | `/api/score/add` | Add a point → `{score, won}` |
+| `POST` | `/api/score/add` | Add 1 point → `ScoreResponse` |
 | `GET`  | `/api/song` | Random track from the cached playlist |
 | `GET`  | `/api/devices` | List available Spotify devices |
 | `PUT`  | `/api/device/{device_id}` | Pin a device for playback |
