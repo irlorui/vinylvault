@@ -24,9 +24,9 @@
         <p class="hero-bottom">VINYL TIMELINE</p>
       </div>
       <p class="hero-subtitle">Listen to tracks from a Spotify playlist and place them on a timeline.</p>
-      <button id="btn-config">⚙ CONFIG</button>
+      <button id="btn-config" title="Setup the game attributes">⚙ CONFIG</button>
       <div id="config-panel" class="hidden">
-        <div class="config-row">
+        <div class="config-row" title="Select the Spotify device to play music on">
           <label class="config-label" for="device-select">DEVICE</label>
           <div id="device-selector">
             <select id="device-select">
@@ -35,19 +35,19 @@
             <button id="btn-refresh-devices" title="Refresh devices">↻</button>
           </div>
         </div>
-        <div class="config-row">
+        <div class="config-row" title="Number of points needed to win the game">
           <label class="config-label" for="win-score-select">POINTS TO WIN</label>
           <select id="win-score-select">
-            <option value="4" selected>4</option>
+            <option value="4">4</option>
             <option value="5">5</option>
             <option value="6">6</option>
             <option value="7">7</option>
             <option value="8">8</option>
             <option value="9">9</option>
-            <option value="10">10</option>
+            <option value="10" selected>10</option>
           </select>
         </div>
-        <div class="config-row">
+        <div class="config-row" title="Your display name shown during the game">
           <label class="config-label" for="player-name-input">PLAYER NAME</label>
           <input id="player-name-input" type="text" value="Player 1" maxlength="20" spellcheck="false">
         </div>

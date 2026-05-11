@@ -136,7 +136,15 @@ button:disabled { opacity: 0.3; cursor: default; }
   display: flex;
   flex-direction: column;
   gap: 6px;
+  border-radius: 8px;
+  padding: 6px 8px;
+  margin: -6px -8px;
+  transition: background 0.15s;
+  cursor: pointer;
 }
+
+.config-row:hover { background: rgba(255, 255, 255, 0.08); }
+.config-row:hover .config-label { color: #bbb; }
 
 .config-label {
   font-size: 0.7rem;
@@ -144,6 +152,7 @@ button:disabled { opacity: 0.3; cursor: default; }
   letter-spacing: 0.18em;
   color: #777;
   text-transform: uppercase;
+  transition: color 0.15s;
   white-space: nowrap;
 }
 
@@ -157,6 +166,7 @@ button:disabled { opacity: 0.3; cursor: default; }
 }
 
 #win-score-select:focus { outline: none; }
+#win-score-select:hover { background: rgba(255, 255, 255, 0.06); border-radius: 4px; }
 
 #player-name-input {
   background: transparent;
@@ -168,6 +178,7 @@ button:disabled { opacity: 0.3; cursor: default; }
   width: 100%;
 }
 
+#player-name-input:hover { border-bottom-color: #666; }
 #player-name-input:focus { outline: none; border-bottom-color: #888; }
 
 /* ─── Start screen ────────────────────────────────────────────────────────── */
@@ -219,6 +230,8 @@ button:disabled { opacity: 0.3; cursor: default; }
   font-size: 0.85rem;
   cursor: pointer;
 }
+
+#device-select:hover { border-color: #777; }
 
 #device-select:focus {
   outline: none;

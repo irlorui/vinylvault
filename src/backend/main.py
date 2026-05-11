@@ -51,7 +51,7 @@ app = FastAPI(title="VinylVault", lifespan=lifespan)
 
 
 def _score_response(score: GameScore) -> ScoreResponse:
-    return ScoreResponse(score=score.value, won=score.won)
+    return ScoreResponse(score=score.value)
 
 
 def _wildcard_response(wc: GameWildcard) -> WildcardResponse:

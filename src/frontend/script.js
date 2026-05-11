@@ -1,5 +1,3 @@
-const WIN_SCORE = 4;
-
 const PHASE = Object.freeze({
   IDLE: 'idle', STARTED: 'started', PLACING: 'placing',
   PLACED: 'placed', WRONG: 'wrong', WON: 'won',
@@ -48,7 +46,7 @@ const game = {
   wildcards: 0,
   showAddWildcard: false,
   colorPool: [],
-  winScore: WIN_SCORE,
+  winScore: parseInt(document.getElementById('win-score-select').value, 10),
   playerName: 'Player 1',
 };
 
