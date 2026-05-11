@@ -181,6 +181,40 @@ button:disabled { opacity: 0.3; cursor: default; }
 #player-count-select:focus { outline: none; box-shadow: 0 0 0 2px #b4ff00; border-radius: 4px; }
 #player-count-select:hover { background: rgba(255, 255, 255, 0.06); border-radius: 4px; }
 
+#playlist-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.playlist-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: #e0e0e0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.playlist-option input[type="checkbox"] {
+  accent-color: #b4ff00;
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.playlist-option.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.playlist-option.disabled input[type="checkbox"] {
+  cursor: not-allowed;
+}
+
 #player-names-config {
   display: flex;
   flex-direction: column;

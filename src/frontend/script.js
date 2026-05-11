@@ -30,9 +30,15 @@ const api = {
   addWildcard:   () => api._post('/api/wildcard/add'),
   useWildcard:   () => api._post('/api/wildcard/use'),
   getSong: () => {
+    const params = new URLSearchParams();
     const used = currentPlayer().timeline.map(c => c.track_id).filter(Boolean).join(',');
-    return api._get(used ? `/api/song?exclude=${used}` : '/api/song');
+    if (used) params.set('exclude', used);
+    const selected = [...game.selectedPlaylists];
+    if (selected.length) params.set('playlists', selected.join(','));
+    const qs = params.toString();
+    return api._get('/api/song' + (qs ? '?' + qs : ''));
   },
+  getPlaylists: () => api._get('/api/playlists'),
   getDevices: () => api._get('/api/devices'),
   setDevice:  (id) => fetch(`/api/device/${id}`, { method: 'PUT' }),
   play:       (trackId) => api._post(`/api/play/${trackId}`),
@@ -52,6 +58,8 @@ const game = {
   playState: PLAY.IDLE,
   showAddWildcard: false,
   winScore: parseInt(document.getElementById('win-score-select').value, 10), // read before DOM refs freeze
+  availablePlaylists: [],   // [{playlist_id, name}, ...] loaded from API
+  selectedPlaylists: new Set(), // playlist_ids currently active
 };
 
 /** Returns the player whose turn it currently is. */
@@ -598,6 +606,72 @@ function updateUI() {
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
 /**
+ * Fetches configured playlists from the API and renders the CONFIG checkboxes.
+ * Silently no-ops on error — the song endpoint falls back to all playlists.
+ */
+async function loadPlaylists() {
+  try {
+    const data = await api.getPlaylists();
+    game.availablePlaylists = data;
+    game.selectedPlaylists = new Set(data.map(p => p.playlist_id));
+    renderPlaylistConfig();
+    if (data.length > 0) {
+      document.getElementById('playlist-config-row').classList.remove('hidden');
+    }
+  } catch {
+    // silently fail — getSong will use all tracks
+  }
+}
+
+/** Builds playlist checkbox rows inside #playlist-checkboxes. */
+function renderPlaylistConfig() {
+  const container = document.getElementById('playlist-checkboxes');
+  if (!container) return;
+  container.innerHTML = '';
+  game.availablePlaylists.forEach(pl => {
+    const label = document.createElement('label');
+    label.className = 'playlist-option';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = pl.playlist_id;
+    checkbox.checked = game.selectedPlaylists.has(pl.playlist_id);
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) {
+        game.selectedPlaylists.add(pl.playlist_id);
+      } else {
+        if (game.selectedPlaylists.size <= 1) {
+          checkbox.checked = true;
+          return;
+        }
+        game.selectedPlaylists.delete(pl.playlist_id);
+      }
+      updatePlaylistCheckboxStates();
+    });
+
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = pl.name;
+
+    label.appendChild(checkbox);
+    label.appendChild(nameSpan);
+    container.appendChild(label);
+  });
+  updatePlaylistCheckboxStates();
+}
+
+/** Disables checkboxes when only one playlist remains selected. */
+function updatePlaylistCheckboxStates() {
+  const container = document.getElementById('playlist-checkboxes');
+  if (!container) return;
+  const onlyOne = game.selectedPlaylists.size === 1;
+  container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    const shouldDisable = onlyOne && cb.checked;
+    cb.disabled = shouldDisable;
+    cb.closest('.playlist-option').classList.toggle('disabled', shouldDisable);
+  });
+}
+
+/**
  * Fetches available Spotify devices and populates the device select.
  * Auto-selects the active device and enables the start button if found.
  */
@@ -651,3 +725,4 @@ deviceSelect.addEventListener('change', async e => {
 document.getElementById('btn-refresh-devices').addEventListener('click', loadDevices); // no cached ref needed — event wired once
 
 loadDevices();
+loadPlaylists();

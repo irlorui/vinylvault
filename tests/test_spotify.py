@@ -12,6 +12,7 @@ from src.backend.spotify import (
     _spotify_op,
     fetch_all_tracks,
     get_devices,
+    get_playlist_name,
     get_random_track,
     pause_track,
     play_track,
@@ -94,6 +95,16 @@ def test_fetch_all_tracks_skips_none_tracks():
     tracks = fetch_all_tracks(sp, "playlist123")
     assert len(tracks) == 1
     assert tracks[0]["id"] == "t1"
+
+
+# ─── get_playlist_name ───────────────────────────────────────────────────────
+
+
+def test_get_playlist_name_returns_name():
+    sp = MagicMock(spec=spotipy.Spotify)
+    sp.playlist.return_value = {"name": "My Playlist"}
+    assert get_playlist_name(sp, "playlist123") == "My Playlist"
+    sp.playlist.assert_called_once_with("playlist123", fields="name")
 
 
 # ─── get_random_track ────────────────────────────────────────────────────────

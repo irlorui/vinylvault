@@ -23,6 +23,8 @@ SAMPLE_TRACKS = [
     },
 ]
 
+SAMPLE_PLAYLIST_NAME = "Test Playlist"
+
 
 @pytest.fixture
 def mock_sp():
@@ -40,6 +42,7 @@ def client(mock_sp):
     with (
         patch("src.backend.main.get_spotify_client", return_value=mock_sp),
         patch("src.backend.main.fetch_all_tracks", return_value=list(SAMPLE_TRACKS)),
+        patch("src.backend.main.get_playlist_name", return_value=SAMPLE_PLAYLIST_NAME),
     ):
         with TestClient(app) as c:
             yield c

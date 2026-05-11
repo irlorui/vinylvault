@@ -15,6 +15,7 @@ from src.backend.models import (
     InitPlayersRequest,
     PlayersResponse,
     PlayerState,
+    PlaylistInfo,
     ReferenceYearResponse,
     TrackResponse,
 )
@@ -22,6 +23,7 @@ from src.backend.score import GamePlayers
 from src.backend.spotify import (
     fetch_all_tracks,
     get_devices,
+    get_playlist_name,
     get_random_track,
     get_spotify_client,
     pause_track,
@@ -35,12 +37,29 @@ _EARLIEST_YEAR = 1960
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize Spotify client, track list, and player state on startup."""
+    """Initialize Spotify client, per-playlist tracks, and player state on startup."""
     settings = get_settings()
     app.state.sp = await run_in_threadpool(get_spotify_client)
-    app.state.tracks = await run_in_threadpool(
-        fetch_all_tracks, app.state.sp, settings.playlist_id
-    )
+
+    tracks_by_playlist: dict[str, list] = {}
+    playlists: list[PlaylistInfo] = []
+    for pid in settings.playlist_id_list():
+        t = await run_in_threadpool(fetch_all_tracks, app.state.sp, pid)
+        name = await run_in_threadpool(get_playlist_name, app.state.sp, pid)
+        tracks_by_playlist[pid] = t
+        playlists.append(PlaylistInfo(playlist_id=pid, name=name))
+
+    seen: set[str] = set()
+    all_tracks: list[dict] = []
+    for t_list in tracks_by_playlist.values():
+        for t in t_list:
+            if t["id"] not in seen:
+                seen.add(t["id"])
+                all_tracks.append(t)
+
+    app.state.tracks = all_tracks
+    app.state.tracks_by_playlist = tracks_by_playlist
+    app.state.playlists = playlists
     app.state.players = GamePlayers()
     app.state.device_id = None
     yield
@@ -78,6 +97,11 @@ def get_sp(request: Request) -> spotipy.Spotify:
 def get_tracks(request: Request) -> list[dict]:
     """Inject the cached track list from app state."""
     return request.app.state.tracks
+
+
+def get_tracks_by_playlist(request: Request) -> dict[str, list[dict]]:
+    """Inject the per-playlist track mapping from app state."""
+    return request.app.state.tracks_by_playlist
 
 
 def get_device_id(request: Request) -> str | None:
@@ -118,14 +142,33 @@ async def add_score(gp: GamePlayers = Depends(get_players)) -> PlayersResponse:
     return _players_response(gp)
 
 
+@app.get("/api/playlists", response_model=list[PlaylistInfo])
+async def get_playlists(request: Request) -> list[PlaylistInfo]:
+    """Return all configured playlists available for the game."""
+    return request.app.state.playlists
+
+
 @app.get("/api/song", response_model=TrackResponse)
 async def get_song(
     tracks: list = Depends(get_tracks),
+    tracks_by_playlist: dict = Depends(get_tracks_by_playlist),
     exclude: str = "",
+    playlists: str = "",
 ) -> TrackResponse:
-    """Return a random track from the cached playlist, excluding already-placed IDs."""
+    """Return a random track, optionally filtered to a subset of playlists."""
+    if playlists:
+        selected = set(playlists.split(","))
+        seen: set[str] = set()
+        pool: list[dict] = []
+        for pid in selected:
+            for t in tracks_by_playlist.get(pid, []):
+                if t["id"] not in seen:
+                    seen.add(t["id"])
+                    pool.append(t)
+    else:
+        pool = tracks
     exclude_ids = set(filter(None, exclude.split(","))) if exclude else None
-    return get_random_track(tracks, exclude_ids)
+    return get_random_track(pool, exclude_ids)
 
 
 @app.get("/api/devices", response_model=list[DeviceResponse])

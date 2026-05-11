@@ -31,6 +31,7 @@ Before starting, click **CONFIG** to customise the game:
 | Setting | Description | Default |
 |---------|-------------|---------|
 | **Device** | The Spotify device that will play the music. You can choose between all devices where you are logged in on Spotify and it is open and active. | — |
+| **Playlists** | The playlists defined in `.config/.env` to consider as sources for the game. | All provided in `.config/.env` |
 | **Points to win** | How many correct placements are needed to win. | 10 |
 | **Players** | Number of players in this game (1–4). Adding players creates a name field for each one. | 1 |
 | **Player names** | Display name for each player, shown in the game header. | Player 1, Player 2, … |

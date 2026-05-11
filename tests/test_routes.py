@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from spotipy.exceptions import SpotifyException
 
 from src.backend.main import app
-from tests.conftest import SAMPLE_TRACKS
+from tests.conftest import SAMPLE_PLAYLIST_NAME, SAMPLE_TRACKS
 
 # ─── GET /api/reference-year ─────────────────────────────────────────────────
 
@@ -111,6 +111,7 @@ def test_get_song_404_when_no_tracks(mock_sp):
     with (
         patch("src.backend.main.get_spotify_client", return_value=mock_sp),
         patch("src.backend.main.fetch_all_tracks", return_value=[]),
+        patch("src.backend.main.get_playlist_name", return_value=SAMPLE_PLAYLIST_NAME),
     ):
         with TestClient(app) as c:
             res = c.get("/api/song")
@@ -138,6 +139,7 @@ def test_get_devices_empty(mock_sp):
     with (
         patch("src.backend.main.get_spotify_client", return_value=mock_sp),
         patch("src.backend.main.fetch_all_tracks", return_value=SAMPLE_TRACKS),
+        patch("src.backend.main.get_playlist_name", return_value=SAMPLE_PLAYLIST_NAME),
     ):
         with TestClient(app) as c:
             res = c.get("/api/devices")
@@ -277,6 +279,41 @@ def test_players_init_reinit_with_fewer_players(client):
     assert len(data["players"]) == 1
     assert data["players"][0]["name"] == "Dave"
     assert data["current_player_index"] == 0
+
+
+# ─── GET /api/playlists ──────────────────────────────────────────────────────
+
+
+def test_get_playlists_returns_list(client):
+    res = client.get("/api/playlists")
+    assert res.status_code == 200
+    assert isinstance(res.json(), list)
+
+
+def test_get_playlists_fields(client):
+    playlist = client.get("/api/playlists").json()[0]
+    assert "playlist_id" in playlist
+    assert "name" in playlist
+
+
+def test_get_playlists_name_matches_mock(client):
+    playlist = client.get("/api/playlists").json()[0]
+    assert playlist["name"] == SAMPLE_PLAYLIST_NAME
+
+
+# ─── GET /api/song (playlists filter) ────────────────────────────────────────
+
+
+def test_get_song_with_valid_playlist_filter(client):
+    playlist_id = client.get("/api/playlists").json()[0]["playlist_id"]
+    res = client.get(f"/api/song?playlists={playlist_id}")
+    assert res.status_code == 200
+    assert res.json()["track_id"] in {t["id"] for t in SAMPLE_TRACKS}
+
+
+def test_get_song_with_unknown_playlist_returns_404(client):
+    res = client.get("/api/song?playlists=nonexistent_playlist")
+    assert res.status_code == 404
 
 
 # ─── _players_response helper ────────────────────────────────────────────────

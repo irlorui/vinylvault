@@ -41,6 +41,13 @@ class PlayersResponse(BaseModel):
     current_player_index: int
 
 
+class PlaylistInfo(BaseModel):
+    """A configured Spotify playlist available for the game."""
+
+    playlist_id: str
+    name: str
+
+
 class InitPlayersRequest(BaseModel):
     """Request body for POST /api/players/init."""
 

@@ -52,6 +52,12 @@ def fetch_all_tracks(sp: spotipy.Spotify, playlist_id: str) -> list[dict]:
     return tracks
 
 
+def get_playlist_name(sp: spotipy.Spotify, playlist_id: str) -> str:
+    """Fetch the display name of a Spotify playlist."""
+    result = sp.playlist(playlist_id, fields="name")
+    return result["name"]
+
+
 def get_random_track(
     tracks: list[dict], exclude: set[str] | None = None
 ) -> TrackResponse:
