@@ -20,6 +20,8 @@ Full How-to guide is available at [How to Setup a Spotify App](docs/how_to_setup
 
 > **Note:** playback requires Spotify Premium and an active device (desktop app, phone, etc.).
 
+> ⚠️ VinylVault uses each track's album release year, not the song's original release year.  **Avoid playlists that include compilation albums.** For further details on this regard, see [Game Rules](docs/game_rules.md).
+
 ### 2. Install dependencies
 
 You need [uv](https://docs.astral.sh/uv/getting-started/installation/) installed.

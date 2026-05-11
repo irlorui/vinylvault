@@ -7,6 +7,23 @@ Just listen and guess where each track belongs in history!
 
 ---
 
+## ⚠️ Playlist warning
+
+VinylVault uses each track's **album release year**, not the song's original release year. Tracks from **compilation albums** (greatest hits, soundtracks, etc.) will show the compilation's release year, which can be decades off from when the song was first recorded — making the game unfair.
+
+The example below shows incorrect years caused by this:
+
+![Compilation and versions song showing wrong Year](images/compilation_and_versions.png)
+
+| Track | Problem | Fix |
+|-------|---------|-----|
+| Elvis Presley — *Suspicious Minds* | Sourced from a compilation | Add the original album version to the playlist instead |
+| Beethoven — classical works | No original release year exists | No fix available — avoid Classical Music playlists |
+
+> ⚠️ **Avoid compilation albums in your playlist.** Remastered editions are fine — they usually retain the original album year.
+
+---
+
 ## ⚙️ Configuration
 
 Before starting, click **CONFIG** to customise the game:
