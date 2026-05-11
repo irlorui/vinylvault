@@ -21,10 +21,17 @@ main {
   padding: 2.5rem 1rem;
   gap: 2.5rem;
   width: 100%;
-  max-width: 960px;
+  max-width: 1400px;
 }
 
 /* ─── Logo ────────────────────────────────────────────────────────────────── */
+
+#app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
 
 #app-logo {
   font-family: 'Anton', Impact, sans-serif;
@@ -33,7 +40,6 @@ main {
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  align-self: flex-start;
 }
 
 .logo-mark  { width: 18px; height: 18px; }
@@ -69,7 +75,7 @@ button:disabled { opacity: 0.3; cursor: default; }
   font-size: 1.5rem;
   padding: 1.25rem 4rem;
   letter-spacing: 0.2em;
-  background: #b4ff00;
+  background: #b4ff00;  /* lime */
   color: #111;
 }
 
@@ -97,13 +103,70 @@ button:disabled { opacity: 0.3; cursor: default; }
   border: 1.5px solid #555;
 }
 
-#btn-reset {
+#btn-home {
   background: transparent;
   color: #f0f0f0;
   border: 1.5px solid #555;
   padding: 0.5rem 1.25rem;
   font-size: 0.8rem;
 }
+
+#btn-config {
+  font-size: 1.5rem;
+  padding: 1.25rem 2.5rem;
+  letter-spacing: 0.2em;
+  border: 1.5px solid #555;
+  background: transparent;
+  color: #f0f0f0;
+}
+
+#config-panel {
+  display: flex;
+  align-items: center;
+  background: #1c1c1c;
+  border: 1px solid #333;
+  border-radius: 50px;
+  padding: 4px 4px 4px 16px;
+  gap: 0.75rem;
+}
+
+.config-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #777;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+#win-score-select {
+  background: transparent;
+  color: #e0e0e0;
+  border: none;
+  padding: 6px 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+#win-score-select:focus { outline: none; }
+
+.config-divider {
+  color: #444;
+  font-size: 1.2rem;
+  user-select: none;
+}
+
+#player-name-input {
+  background: transparent;
+  color: #e0e0e0;
+  border: none;
+  border-bottom: 1px solid #444;
+  padding: 4px 2px;
+  font-size: 1.5rem;
+  width: 120px;
+}
+
+#player-name-input:focus { outline: none; border-bottom-color: #888; }
 
 /* ─── Start screen ────────────────────────────────────────────────────────── */
 
@@ -214,8 +277,28 @@ button:disabled { opacity: 0.3; cursor: default; }
 
 #game-topbar-right {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  align-items: flex-start;
+  gap: 2rem;
+}
+
+#player-area {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.topbar-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #555;
+  text-transform: uppercase;
+}
+
+#player-name-display {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f0f0f0;
 }
 
 /* ─── Score + Wildcards ───────────────────────────────────────────────────── */
@@ -240,16 +323,17 @@ button:disabled { opacity: 0.3; cursor: default; }
 }
 
 #wildcard-display {
-  background: #b4ff00;
-  color: #111;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  padding: 0.45rem 1rem;
-  border-radius: 50px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 0.4rem;
+  color: #f0f0f0;
+}
+
+.wc-count {
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #b4ff00;
 }
 
 .score-pip {
@@ -330,12 +414,14 @@ button:disabled { opacity: 0.3; cursor: default; }
   width: 100%;
   overflow-x: auto;
   padding-bottom: 0.5rem;
+  display: flex;
+  justify-content: center;
 }
 
 #timeline {
   display: flex;
   align-items: center;
-  min-height: 180px;
+  min-height: 170px;
   padding: 0.5rem 1rem;
   gap: 1rem;
 }
@@ -343,8 +429,8 @@ button:disabled { opacity: 0.3; cursor: default; }
 /* Timeline cards */
 .timeline-card {
   flex-shrink: 0;
-  width: 120px;
-  height: 160px;
+  width: 115px;
+  height: 155px;
   border-radius: 20px;
   display: flex;
   flex-direction: column;
@@ -356,7 +442,7 @@ button:disabled { opacity: 0.3; cursor: default; }
 }
 
 .ref-card {
-  background: #ffd600;
+  background:  #b4ff00;  /* lime */
   color: #111;
 }
 
@@ -364,16 +450,16 @@ button:disabled { opacity: 0.3; cursor: default; }
   animation: pop-in 0.25s ease;
 }
 
-.placed-card-0 { background: #1db954; color: #111; }    /* green */
-.placed-card-1 { background: #e91e8c; color: #111; }    /* pink */
-.placed-card-2 { background: #a8d92b; color: #111; }    /* lime */
-.placed-card-3 { background: #3d6cd4; color: #fdf8ee; } /* cobalt */
-.placed-card-4 { background: #f5820d; color: #111; }    /* orange */
-.placed-card-5 { background: #00bcd4; color: #111; }    /* cyan */
-.placed-card-6 { background: #d81b60; color: #fdf8ee; } /* magenta */
-.placed-card-7 { background: #C8943C; color: #fdf8ee; } /* harvest goal */
-.placed-card-8 { background: #7BB2D9; color: #111; }    /* sky reflection */
-.placed-card-9 { background: #f9c74f; color: #111; }    /* yellow */
+.placed-card-0 { background: #2979FF; color: #fdf8ee; } /* neon blue */
+.placed-card-1 { background: #AA00FF; color: #fdf8ee; } /* neon purple */
+.placed-card-2 { background: #FF6D00; color: #111; }    /* hot orange */
+.placed-card-3 { background: #e91e8c; color: #111; }    /* pink */
+.placed-card-4 { background: #00E676; color: #111; }    /* neon mint */
+.placed-card-5 { background: #00E5FF; color: #111; }    /* neon cyan */
+.placed-card-6 { background: #FFEA00; color: #111; }    /* electric yellow */
+.placed-card-7 { background: #1DE9B6; color: #111; }    /* neon teal */
+.placed-card-8 { background: #FF1744; color: #fdf8ee; } /* neon red */
+.placed-card-9 { background: #1ed760; color: #111; }    /* malachite */
 
 .pending-card {
   background: #e0d8c8;
@@ -431,7 +517,7 @@ button:disabled { opacity: 0.3; cursor: default; }
 /* Drop zones */
 .drop-zone {
   flex-shrink: 0;
-  width: 20px;
+  width: 7px;
   height: 160px;
   display: flex;
   align-items: center;

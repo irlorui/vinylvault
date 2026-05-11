@@ -11,6 +11,8 @@ const game = {
   wildcards: 0,
   showAddWildcard: false,
   colorPool: [],
+  winScore: WIN_SCORE,
+  playerName: 'Player 1',
 };
 
 // DOM refs
@@ -25,13 +27,31 @@ const btnReveal = document.getElementById('btn-reveal');
 const btnSkip = document.getElementById('btn-skip');
 const btnAddWildcard = document.getElementById('btn-add-wildcard');
 const stagingArea = document.getElementById('staging-area');
+const btnConfig = document.getElementById('btn-config');
+const configPanel = document.getElementById('config-panel');
 const errorMsg = document.getElementById('error-msg');
 const scoreDisplay = document.getElementById('score-display');
 const wildcardDisplay = document.getElementById('wildcard-display');
 const wildcardCount = document.getElementById('wildcard-count');
 const winScreen = document.getElementById('win-screen');
 const deviceSelector = document.getElementById('device-selector');
-const btnReset = document.getElementById('btn-reset');
+const btnReset = document.getElementById('btn-home');
+
+// CONFIG
+btnConfig.addEventListener('click', () => {
+  const open = !configPanel.classList.contains('hidden');
+  configPanel.classList.toggle('hidden', open);
+  btnConfig.textContent = open ? '⚙ CONFIG' : '⚙ CONFIG ▲';
+});
+
+document.getElementById('win-score-select').addEventListener('change', e => {
+  game.winScore = parseInt(e.target.value, 10);
+});
+
+document.getElementById('player-name-input').addEventListener('input', e => {
+  game.playerName = e.target.value || 'Player 1';
+  document.getElementById('player-name-display').textContent = game.playerName;
+});
 
 // START
 document.getElementById('btn-start').addEventListener('click', async () => {
@@ -54,6 +74,7 @@ document.getElementById('btn-start').addEventListener('click', async () => {
     game.colorPool = shuffledColors();
     game.timeline = [{ year, isReference: true, name: null, artist: null, track_id: null }];
 
+    document.getElementById('player-name-display').textContent = game.playerName;
     startScreen.classList.add('hidden');
     gameScreen.classList.remove('hidden');
     render();
@@ -138,16 +159,16 @@ btnReveal.addEventListener('click', async () => {
 
     const scoreRes = await fetch('/api/score/add', { method: 'POST' });
     if (!scoreRes.ok) { showError('Failed to update score.'); return; }
-    const { score, won } = await scoreRes.json();
+    const { score } = await scoreRes.json();
     game.score = score;
 
-    if (won) {
+    if (game.score >= game.winScore) {
       if (game.playState === 'playing') {
         await fetch('/api/pause', { method: 'POST' }).catch(() => {});
         game.playState = 'idle';
       }
       game.phase = 'won';
-      document.getElementById('win-score-stat').textContent = `${game.score} / ${WIN_SCORE}`;
+      document.getElementById('win-score-stat').textContent = `${game.score} / ${game.winScore}`;
     } else {
       game.showAddWildcard = true;
       game.phase = 'started';
@@ -261,7 +282,7 @@ function render() {
 
 function renderScore() {
   scoreDisplay.innerHTML = '';
-  for (let i = 1; i <= WIN_SCORE; i++) {
+  for (let i = 1; i <= game.winScore; i++) {
     const pip = document.createElement('span');
     pip.className = 'score-pip' + (i <= game.score ? ' filled' : '');
     scoreDisplay.appendChild(pip);

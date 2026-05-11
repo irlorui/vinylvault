@@ -11,8 +11,11 @@
 </head>
 <body>
   <main>
-    <div id="app-logo">
-      <img src="assets/vinyl-mark.svg" alt="" class="logo-mark"><span class="logo-vinyl">VINYL</span><span class="logo-vault">VAULT</span>
+    <div id="app-header">
+      <div id="app-logo">
+        <img src="assets/vinyl-mark.svg" alt="" class="logo-mark"><span class="logo-vinyl">VINYL</span><span class="logo-vault">VAULT</span>
+      </div>
+      <button id="btn-home" class="hidden">HOME</button>
     </div>
 
     <div id="start-screen">
@@ -28,20 +31,40 @@
         <button id="btn-refresh-devices" title="Refresh devices">↻</button>
       </div>
       <p id="start-hint">PICK A DEVICE TO BEGIN</p>
+      <button id="btn-config">⚙ CONFIG</button>
+      <div id="config-panel" class="hidden">
+        <label class="config-label" for="win-score-select">POINTS TO WIN</label>
+        <select id="win-score-select">
+          <option value="4" selected>4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value="10">10</option>
+        </select>
+        <span class="config-divider">|</span>
+        <label class="config-label" for="player-name-input">PLAYER NAME</label>
+        <input id="player-name-input" type="text" value="Player 1" maxlength="20" spellcheck="false">
+      </div>
       <button id="btn-start" disabled>START</button>
     </div>
 
     <div id="game-screen" class="hidden">
       <div id="game-topbar">
-        <div id="score-area">
-          <p class="score-label">SCORE</p>
-          <div id="score-display"></div>
+        <div id="player-area">
+          <p class="topbar-label">YOUR TURN</p>
+          <p id="player-name-display">Player 1</p>
         </div>
         <div id="game-topbar-right">
-          <div id="wildcard-display" class="hidden">
-            <span class="wc-icon">✦</span> WILDCARDS · <span id="wildcard-count">0</span>
+          <div id="score-area">
+            <p class="score-label">SCORE</p>
+            <div id="score-display"></div>
           </div>
-          <button id="btn-reset" class="hidden">RESET</button>
+          <div id="wildcard-display" class="hidden">
+            <p class="score-label">WILDCARDS</p>
+            <p class="wc-count"><span class="wc-icon">✦</span> <span id="wildcard-count">0</span></p>
+          </div>
         </div>
       </div>
 
@@ -72,7 +95,7 @@
         </div>
         <div id="action-buttons">
           <button id="btn-new-song" class="hidden">NEW SONG</button>
-          <button id="btn-add-wildcard" class="hidden" title="Award a wildcard for correctly naming the song title and artist">ADD WILDCARD</button>
+          <button id="btn-add-wildcard" class="hidden" title="Award a wildcard for correctly naming the song title and artist">+1 WILDCARD<span class="wc-icon">✦</span></button>
         </div>
       </div>
     </div>
