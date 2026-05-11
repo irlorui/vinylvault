@@ -1,7 +1,5 @@
 """Game score management."""
 
-WIN_SCORE = 4
-
 
 class GameScore:
     """Tracks points for a single game session."""
@@ -17,11 +15,6 @@ class GameScore:
     def add(self) -> None:
         """Add one point for a correct card placement."""
         self.value += 1
-
-    @property
-    def won(self) -> bool:
-        """Return True when the player has reached the win threshold."""
-        return self.value >= WIN_SCORE
 
 
 class GameWildcard:

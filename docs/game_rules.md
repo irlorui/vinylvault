@@ -5,6 +5,20 @@ Just listen and guess where each track belongs in history!
 
 ---
 
+## ⚙️ Configuration
+
+Before starting, click **CONFIG** to customise the game:
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **Device** | The Spotify device that will play the music. You can choose between all devices where you are logged in on Spotify and it is open and active. | — |
+| **Points to win** | How many correct placements are needed to win. | 10 |
+| **Player name** | Your display name shown in the game header. | Player 1 |
+
+> 💡 You must select a device before START becomes available.
+
+---
+
 ## 🚀 Starting a game
 
 Hit **START** and the game picks a random reference year (anywhere from 1960 to today).
@@ -128,7 +142,9 @@ SKIP is greyed out when your wildcard count is zero, so you always know where yo
 
 ## 🏆 Winning
 
-Reach **4 points** (reference card + 3 correct placements) and the game is over!
+Reach the **Points to win** target (default: 10) and the game is over!
+
+The target is set in **CONFIG** before the game starts.
 
 Hit **PLAY AGAIN** to start fresh with a new reference year and a clean timeline.
 

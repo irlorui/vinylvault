@@ -30,7 +30,6 @@ def test_score_reset_returns_one(client):
     assert res.status_code == 200
     data = res.json()
     assert data["score"] == 1
-    assert data["won"] is False
 
 
 # ─── POST /api/score/add ─────────────────────────────────────────────────────
@@ -43,21 +42,12 @@ def test_score_add_increments(client):
     assert res.json()["score"] == 2
 
 
-def test_score_add_won_at_four(client):
+def test_score_add_reaches_four(client):
     client.post("/api/score/reset")  # score = 1
     client.post("/api/score/add")  # 2
     client.post("/api/score/add")  # 3
     res = client.post("/api/score/add")  # 4
-    data = res.json()
-    assert data["score"] == 4
-    assert data["won"] is True
-
-
-def test_score_add_not_won_at_three(client):
-    client.post("/api/score/reset")  # 1
-    client.post("/api/score/add")  # 2
-    res = client.post("/api/score/add")  # 3
-    assert res.json()["won"] is False
+    assert res.json()["score"] == 4
 
 
 # ─── GET /api/song ───────────────────────────────────────────────────────────

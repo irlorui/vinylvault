@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.0] — 2026-05-11
+
+### Added
+- CONFIG panel — win score selector (configurable 4–20) and Spotify device selector, accessible before starting a game
+- Player name input — displayed in the topbar throughout the game
+
+### Changed
+- Full Vinyl Vault design system: new typography, card colours, topbar redesign, and layout polish
+- REVEAL button colour changed to green-lime for clearer visual affordance
+- Improved placed-card colours and win screen layout
+
+### Fixed
+- Duplicate songs: `GET /api/song` now accepts an `?exclude=` query param; the frontend passes already-placed track IDs so the same song can never repeat in one game
+- Removed `won` field from `POST /api/score/add` response (win logic moved entirely to frontend)
+- Win score initialisation now reads the CONFIG panel value correctly on game start
+
+---
+
 ## [1.0.0] — 2026-05-08
 
 ### Added

@@ -31,15 +31,10 @@ def test_reference_year_response():
     assert ref.model_dump() == {"year": 1990}
 
 
-def test_score_response_not_won():
-    s = ScoreResponse(score=2, won=False)
+def test_score_response():
+    s = ScoreResponse(score=2)
     assert s.score == 2
-    assert s.won is False
-
-
-def test_score_response_won():
-    s = ScoreResponse(score=4, won=True)
-    assert s.won is True
+    assert s.model_dump() == {"score": 2}
 
 
 def test_device_response_fields():

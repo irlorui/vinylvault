@@ -19,10 +19,9 @@ class ReferenceYearResponse(BaseModel):
 
 
 class ScoreResponse(BaseModel):
-    """Current game score and win state."""
+    """Current game score."""
 
     score: int
-    won: bool
 
 
 class DeviceResponse(BaseModel):
