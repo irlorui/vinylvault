@@ -57,6 +57,12 @@ def get_random_track(
 ) -> TrackResponse:
     """Return a random track from a pre-fetched list, skipping any excluded IDs."""
     available = [t for t in tracks if t["id"] not in exclude] if exclude else tracks
+    available = [
+        t
+        for t in available
+        if t.get("artists")
+        and (t.get("album") or {}).get("release_date", "")[:4].isdigit()
+    ]
     if not available:
         raise HTTPException(status_code=404, detail="No playable tracks in playlist.")
     track = random.choice(available)

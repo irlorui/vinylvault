@@ -121,6 +121,46 @@ def test_get_random_track_extracts_year_from_release_date():
     assert result.year == "1991"
 
 
+def test_get_random_track_all_excluded_raises_404():
+    track = _make_track("t1", "Song", "1985")
+    with pytest.raises(HTTPException) as exc_info:
+        get_random_track([track], exclude={"t1"})
+    assert exc_info.value.status_code == 404
+
+
+def test_get_random_track_exclude_returns_only_non_excluded():
+    t1 = _make_track("t1", "Song A", "1980")
+    t2 = _make_track("t2", "Song B", "1991")
+    result = get_random_track([t1, t2], exclude={"t1"})
+    assert result.track_id == "t2"
+
+
+def test_get_random_track_skips_malformed_tracks():
+    malformed = [
+        {"id": "bad1", "artists": [], "album": {"release_date": "unknown"}},
+        {
+            "id": "good",
+            "name": "Song",
+            "artists": [{"name": "A"}],
+            "album": {"release_date": "2000-01-01"},
+        },
+    ]
+    result = get_random_track(malformed)
+    assert result.track_id == "good"
+
+
+def test_get_random_track_skips_none_album():
+    none_album = {
+        "id": "bad",
+        "name": "Bad Track",
+        "artists": [{"name": "Artist"}],
+        "album": None,
+    }
+    good = _make_track("good", "Good Song", "1990")
+    result = get_random_track([none_album, good])
+    assert result.track_id == "good"
+
+
 # ─── get_devices ─────────────────────────────────────────────────────────────
 
 
