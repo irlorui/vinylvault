@@ -91,7 +91,8 @@ button:disabled { opacity: 0.3; cursor: default; }
   border: 1.5px solid #f0f0f0;
 }
 
-#btn-new-song {
+#btn-new-song,
+#btn-next-turn {
   background: transparent;
   color: #f0f0f0;
   border: 1.5px solid #555;
@@ -168,7 +169,25 @@ button:disabled { opacity: 0.3; cursor: default; }
 #win-score-select:focus { outline: none; box-shadow: 0 0 0 2px #b4ff00; border-radius: 4px; }
 #win-score-select:hover { background: rgba(255, 255, 255, 0.06); border-radius: 4px; }
 
-#player-name-input {
+#player-count-select {
+  background: transparent;
+  color: #e0e0e0;
+  border: none;
+  padding: 6px 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+#player-count-select:focus { outline: none; box-shadow: 0 0 0 2px #b4ff00; border-radius: 4px; }
+#player-count-select:hover { background: rgba(255, 255, 255, 0.06); border-radius: 4px; }
+
+#player-names-config {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+#player-names-config input {
   background: transparent;
   color: #e0e0e0;
   border: none;
@@ -178,8 +197,8 @@ button:disabled { opacity: 0.3; cursor: default; }
   width: 100%;
 }
 
-#player-name-input:hover { border-bottom-color: #666; }
-#player-name-input:focus { outline: none; border-bottom-color: #b4ff00; }
+#player-names-config input:hover { border-bottom-color: #666; }
+#player-names-config input:focus { outline: none; border-bottom-color: #b4ff00; }
 
 /* ─── Start screen ────────────────────────────────────────────────────────── */
 
@@ -286,16 +305,58 @@ button:disabled { opacity: 0.3; cursor: default; }
   gap: 2rem;
 }
 
-#player-area {
+#players-list {
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
-#player-name-display {
-  font-size: 1rem;
+.player-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  border: 1.5px solid #333;
+  background: transparent;
+  opacity: 0.45;
+  transition: opacity 0.2s, border-c
+  olor 0.2s;
+  min-width: 64px;
+}
+
+.player-chip--current {
+  opacity: 1;
+  border-color: #b4ff00;
+}
+
+.player-chip__name {
+  font-size: 0.65rem;
   font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #aaa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90px;
+}
+
+.player-chip--current .player-chip__name {
   color: #f0f0f0;
+}
+
+.player-chip__score {
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #555;
+}
+
+.player-chip--current .player-chip__score {
+  color: #b4ff00;
 }
 
 /* ─── Score + Wildcards ───────────────────────────────────────────────────── */
@@ -404,6 +465,50 @@ button:disabled { opacity: 0.3; cursor: default; }
   box-shadow: inset 0 0 0 2px #2a2a2a;
   padding: 1rem 3rem;
   margin-top: 0.5rem;
+}
+
+/* ─── Wrong-reveal popup ─────────────────────────────────────────────────── */
+
+#wrong-popup {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+#wrong-popup-card {
+  background: #1a1a1a;
+  border: 2px solid #ff3b3b;
+  border-radius: 20px;
+  padding: 2.5rem 3rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 280px;
+}
+
+.wrong-popup-eyebrow {
+  color: #ff3b3b;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+#wrong-popup-next {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+#btn-wrong-continue {
+  background: transparent;
+  color: #f0f0f0;
+  border: 1.5px solid #555;
 }
 
 /* ─── Timeline ────────────────────────────────────────────────────────────── */
