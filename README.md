@@ -1,4 +1,4 @@
-# 🎵 VinylVault
+# 🎼🎸 VinylVault
 
 A party game for music nerds!
 

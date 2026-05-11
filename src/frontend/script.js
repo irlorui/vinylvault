@@ -143,18 +143,16 @@ btnStart.addEventListener('click', async () => {
       document.getElementById('player-names-config').querySelectorAll('input'),
     ).map(el => el.value.trim() || el.placeholder || `Player ${el.id.split('-').pop()}`);
 
-    const [{ year }, data] = await Promise.all([
-      api.referenceYear(),
+    const [refYears, data] = await Promise.all([
+      Promise.all(names.map(() => api.referenceYear())),
       api.initPlayers(names),
     ]);
 
-    const refCard = { year, isReference: true, name: null, artist: null, track_id: null };
-
-    game.players = data.players.map(p => ({
+    game.players = data.players.map((p, i) => ({
       name: p.name,
       score: p.score,
       wildcards: p.wildcards,
-      timeline: [{ ...refCard }],
+      timeline: [{ year: refYears[i].year, isReference: true, name: null, artist: null, track_id: null }],
       colorPool: shuffledColors(),
     }));
     game.currentPlayerIndex = data.current_player_index;
@@ -289,7 +287,7 @@ btnReveal.addEventListener('click', async () => {
     game.phase = PHASE.WRONG;
     render();
 
-    if (game.players.length > 2) {
+    if (game.players.length > 1) {
       const nextIdx = (game.currentPlayerIndex + 1) % game.players.length;
       wrongPopupNext.textContent = `It's ${game.players[nextIdx].name}'s turn`;
       wrongPopup.classList.remove('hidden');

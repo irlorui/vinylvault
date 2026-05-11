@@ -26,8 +26,8 @@ Before starting, click **CONFIG** to customise the game:
 
 ## 🚀 Starting a game
 
-Hit **START** and the game picks a random reference year (anywhere from 1960 to today).
-That year becomes every player's **anchor card** — the first card on each player's independent timeline, and each player's first point.
+Hit **START** and each player gets their own random reference year (anywhere from 1960 to today).
+That year becomes their **anchor card** — the first card on their timeline, and their first point.
 
 Players take turns in the order they were named in CONFIG. The current player is highlighted in the topbar.
 
@@ -69,8 +69,8 @@ The **+1 WILDCARD** and **NEXT TURN** buttons appear. The current player can:
 
 ### After a wrong reveal
 
-- **3 or more players:** a popup announces the next player's name. Click **CONTINUE** to hand over.
-- **2 players or fewer:** the turn advances automatically after 1.5 seconds.
+- **2 or more players:** a popup announces the next player's name. Click **CONTINUE** to hand over.
+- **Single player:** the turn advances automatically after 1.5 seconds.
 
 ![VinylVault Correct Card](images/correct_card_placement.png)
 
@@ -102,11 +102,11 @@ SKIP is greyed out when the current player's wildcard count is zero.
          ┌─────────┐
          │  START  │
          └────┬────┘
-              │  fetch reference year + init players
+              │  fetch one reference year per player + init players
               ▼
     ┌───────────────────────────────┐
     │  each player's timeline:      │  score = 1
-    │  [REF]                        │
+    │  [own REF year]               │
     │  NEW SONG (Player 1's turn)   │
     └────────────┬──────────────────┘
                  │ click NEW SONG
@@ -135,10 +135,10 @@ SKIP is greyed out when the current player's wildcard count is zero.
   score + 1
          │              │
          ▼              ▼
-  [+1 WILDCARD?]   3+ players:
+  [+1 WILDCARD?]   2+ players:
   [NEXT TURN]       wrong popup →
                     CONTINUE
-                    ≤2 players:
+                    single player:
                     auto-advance
                          │
          └──────┬─────────┘
