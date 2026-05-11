@@ -6,7 +6,7 @@ Listen to a random track from your Spotify playlist and place it in the right sp
 
 Built with **FastAPI** + **spotipy** on the backend and plain HTML/CSS/JS on the frontend.
 
-**TODO: Add screenshot or gif**
+![VinylVault Placing a card](docs/images/place_card.png)
 
 ---
 

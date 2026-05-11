@@ -3,6 +3,8 @@
 VinylVault is a music trivia game where you build a timeline of songs by ear.
 Just listen and guess where each track belongs in history!
 
+![VinylVault Main Screen](images/main_menu.png)
+
 ---
 
 ## ⚙️ Configuration
@@ -16,6 +18,8 @@ Before starting, click **CONFIG** to customise the game:
 | **Player name** | Your display name shown in the game header. | Player 1 |
 
 > 💡 You must select a device before START becomes available.
+
+![VinylVault Config Menu](images/config_menu.png)
 
 ---
 
@@ -32,9 +36,7 @@ Click **NEW SONG** to draw a card. The song starts playing from Spotify and a fa
 card appears in your staging area. You can toggle **PLAY / PAUSE** as many times as you
 want before committing.
 
-
-![VinylVault game screen](images/game_mechanism.png)
-
+![VinylVault Round Flow](images/main_game.png)
 
 ---
 
@@ -45,6 +47,8 @@ in the timeline.
 
 Changed your mind? No problem — drag the card again to a different spot.
 The **REVEAL** button only lights up once the card is somewhere in the timeline.
+
+![VinylVault Placing a card](images/place_card.png)
 
 ---
 
@@ -57,6 +61,8 @@ the position you chose.
 
 Whether you were right or made a mistake, click **NEW SONG** and try again with the next track.
 
+![VinylVault Correct Card](images/correct_card.png)
+
 ---
 
 ## 🃏 Wildcards
@@ -68,12 +74,6 @@ Wildcards are bonus tokens you can earn — and spend — to shake things up.
 Before clicking **REVEAL**, any player can shout out the song's title **and** artist.
 If they got it right, after the reveal click **ADD WILDCARD** to bank one token.
 The button disappears as soon as you draw the next song, so don't forget!
-
-```
-  [▶ PLAY]  [SKIP]  [REVEAL]   ← SKIP lights up once you have wildcards
-
-  [NEW SONG]  [ADD WILDCARD]   ← ADD WILDCARD appears right after REVEAL
-```
 
 ### Spending a wildcard
 
@@ -147,6 +147,8 @@ Reach the **Points to win** target (default: 10) and the game is over!
 The target is set in **CONFIG** before the game starts.
 
 Hit **PLAY AGAIN** to start fresh with a new reference year and a clean timeline.
+
+![VinylVault Win Screen](images/win_screen.png)
 
 ---
 
