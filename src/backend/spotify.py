@@ -16,13 +16,13 @@ SCOPE = "user-read-playback-state user-modify-playback-state"
 
 @contextmanager
 def _spotify_op():
-    """Wrap a Spotify call, converting 403s to HTTPException."""
+    """Wrap a Spotify call, converting Spotify errors to HTTPException."""
     try:
         yield
     except SpotifyException as e:
         if e.http_status == 403:
             raise HTTPException(status_code=403, detail="Spotify Premium required.")
-        raise
+        raise HTTPException(status_code=502, detail="Spotify error.") from e
 
 
 def get_spotify_client() -> spotipy.Spotify:
@@ -55,6 +55,10 @@ def fetch_all_tracks(sp: spotipy.Spotify, playlist_id: str) -> list[dict]:
 def get_playlist_name(sp: spotipy.Spotify, playlist_id: str) -> str:
     """Fetch the display name of a Spotify playlist."""
     result = sp.playlist(playlist_id, fields="name")
+    if not result:
+        raise HTTPException(
+            status_code=404, detail=f"Playlist not found: {playlist_id}"
+        )
     return result["name"]
 
 
@@ -62,13 +66,14 @@ def get_random_track(
     tracks: list[dict], exclude: set[str] | None = None
 ) -> TrackResponse:
     """Return a random track from a pre-fetched list, skipping any excluded IDs."""
-    available = [t for t in tracks if t["id"] not in exclude] if exclude else tracks
     available = [
         t
-        for t in available
+        for t in tracks
         if t.get("artists")
         and (t.get("album") or {}).get("release_date", "")[:4].isdigit()
     ]
+    if exclude is not None:
+        available = [t for t in available if t["id"] not in exclude]
     if not available:
         raise HTTPException(status_code=404, detail="No playable tracks in playlist.")
     track = random.choice(available)

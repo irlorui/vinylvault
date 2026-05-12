@@ -150,14 +150,14 @@ async def get_playlists(request: Request) -> list[PlaylistInfo]:
 
 @app.get("/api/song", response_model=TrackResponse)
 async def get_song(
-    tracks: list = Depends(get_tracks),
-    tracks_by_playlist: dict = Depends(get_tracks_by_playlist),
+    tracks: list[dict] = Depends(get_tracks),
+    tracks_by_playlist: dict[str, list[dict]] = Depends(get_tracks_by_playlist),
     exclude: str = "",
     playlists: str = "",
 ) -> TrackResponse:
     """Return a random track, optionally filtered to a subset of playlists."""
     if playlists:
-        selected = set(playlists.split(","))
+        selected = {p for p in playlists.split(",") if p}
         seen: set[str] = set()
         pool: list[dict] = []
         for pid in selected:
@@ -172,7 +172,9 @@ async def get_song(
 
 
 @app.get("/api/devices", response_model=list[DeviceResponse])
-async def get_devices_endpoint(sp=Depends(get_sp)) -> list[DeviceResponse]:
+async def get_devices_endpoint(
+    sp: spotipy.Spotify = Depends(get_sp),
+) -> list[DeviceResponse]:
     """Return all available Spotify playback devices."""
     return await run_in_threadpool(get_devices, sp)
 
@@ -186,21 +188,24 @@ async def set_device(device_id: str, request: Request) -> None:
 @app.post("/api/play/{track_id}", status_code=204)
 async def play_song(
     track_id: str,
+    tracks: list[dict] = Depends(get_tracks),
     sp: spotipy.Spotify = Depends(get_sp),
     device_id: str | None = Depends(get_device_id),
 ) -> None:
     """Trigger playback of the given track on the pinned Spotify device."""
+    if track_id not in {t["id"] for t in tracks}:
+        raise HTTPException(status_code=404, detail="Track not in playlist.")
     await run_in_threadpool(play_track, sp, track_id, device_id)
 
 
 @app.post("/api/pause", status_code=204)
-async def pause_song(sp=Depends(get_sp)) -> None:
+async def pause_song(sp: spotipy.Spotify = Depends(get_sp)) -> None:
     """Pause playback on the active Spotify device."""
     await run_in_threadpool(pause_track, sp)
 
 
 @app.post("/api/resume", status_code=204)
-async def resume_song(sp=Depends(get_sp)) -> None:
+async def resume_song(sp: spotipy.Spotify = Depends(get_sp)) -> None:
     """Resume playback on the active Spotify device."""
     await run_in_threadpool(resume_track, sp)
 

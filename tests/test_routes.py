@@ -167,6 +167,12 @@ def test_play_returns_503_without_device(client):
     assert res.status_code == 503
 
 
+def test_play_returns_404_for_unknown_track(client):
+    client.put("/api/device/dev1")
+    res = client.post("/api/play/not_a_real_track")
+    assert res.status_code == 404
+
+
 def test_play_returns_204_with_device(client, mock_sp):
     client.put("/api/device/dev1")
     res = client.post("/api/play/track1")
@@ -272,6 +278,16 @@ def test_players_init_four_players(client):
     assert len(res.json()["players"]) == 4
 
 
+def test_players_init_rejects_empty_name(client):
+    res = client.post("/api/players/init", json={"names": ["", "Alice"]})
+    assert res.status_code == 422
+
+
+def test_players_init_rejects_whitespace_name(client):
+    res = client.post("/api/players/init", json={"names": ["   ", "Alice"]})
+    assert res.status_code == 422
+
+
 def test_players_init_reinit_with_fewer_players(client):
     client.post("/api/players/init", json={"names": ["Alice", "Bob", "Carol"]})
     res = client.post("/api/players/init", json={"names": ["Dave"]})
@@ -302,6 +318,17 @@ def test_get_playlists_name_matches_mock(client):
 
 
 # ─── GET /api/song (playlists filter) ────────────────────────────────────────
+
+
+def test_get_song_empty_playlists_param_falls_back_to_all_tracks(client):
+    res = client.get("/api/song?playlists=")
+    assert res.status_code == 200
+    assert res.json()["track_id"] in {t["id"] for t in SAMPLE_TRACKS}
+
+
+def test_get_song_comma_only_playlists_param_returns_404(client):
+    res = client.get("/api/song?playlists=,")
+    assert res.status_code == 404
 
 
 def test_get_song_with_valid_playlist_filter(client):
