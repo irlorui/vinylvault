@@ -20,7 +20,7 @@ Full How-to guide is available at [How to Setup a Spotify App](docs/how_to_setup
 
 > **Note:** playback requires Spotify Premium and an active device (desktop app, phone, etc.).
 
-> ⚠️ VinylVault uses each track's album release year, not the song's original release year.  **Avoid playlists that include compilation albums.** For further details on this regard, see [Game Rules](docs/game_rules.md).
+> ⚠️ VinylVault uses each track's album release year, not the song's original release year.  **Avoid playlists that include compilation albums.** For further details on this regard, see [How to Play](docs/how_to_play_vinylvault.md).
 
 ### 2. Install dependencies
 
@@ -50,7 +50,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser. On first ru
 4. Click **REVEAL** — if your placement is chronologically correct the card stays; if not, it disappears.
 5. Reach the **Points to win** target (default: 10) (including the reference) and you win! 🏆
 
-Full rules and a game-flow diagram are in [Game Rules](docs/game_rules.md).
+Full rules and a game-flow diagram are in [How to Play](docs/how_to_play_vinylvault.md).
 
 ---
 
@@ -86,6 +86,12 @@ docs/             # documentation on project
 | `POST` | `/api/resume` | Resume playback |
 | `POST` | `/api/wildcard/add` | Award 1 wildcard to current player |
 | `POST` | `/api/wildcard/use` | Spend 1 wildcard → 409 if none |
+
+---
+
+## 🤖 AI Disclosure
+
+This project was built with the assistance of AI tools, including [Claude Code](https://claude.ai/code) (Anthropic). AI was used to help write, review, and refactor code throughout development.
 
 ---
 

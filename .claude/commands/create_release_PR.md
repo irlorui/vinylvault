@@ -74,7 +74,7 @@ See [CHANGELOG.md](CHANGELOG.md) for the full list. Highlights:
 
 ### Demo
 
-Full rules and game-flow diagram: [docs/game_rules.md](docs/game_rules.md)
+Full rules and game-flow diagram: [How To Play Vinyl Vault](docs/how_to_play_vinylvault.md)
 
 ## PR Acceptance Criteria
 
