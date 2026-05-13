@@ -80,7 +80,7 @@ def get_random_track(
     return TrackResponse(
         track_id=track["id"],
         name=track["name"],
-        artist=track["artists"][0]["name"],
+        artist=", ".join(a["name"] for a in track["artists"]),
         year=track["album"]["release_date"][:4],
     )
 

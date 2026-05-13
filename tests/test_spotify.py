@@ -162,6 +162,13 @@ def test_get_random_track_exclude_returns_only_non_excluded():
     assert result.track_id == "t2"
 
 
+def test_get_random_track_joins_multiple_artists():
+    track = _make_track("t1", "Song", "2001")
+    track["artists"] = [{"name": "Artist A"}, {"name": "Artist B"}]
+    result = get_random_track([track])
+    assert result.artist == "Artist A, Artist B"
+
+
 def test_get_random_track_skips_malformed_tracks():
     malformed = [
         {"id": "bad1", "artists": [], "album": {"release_date": "unknown"}},
