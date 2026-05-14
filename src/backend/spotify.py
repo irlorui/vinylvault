@@ -58,25 +58,21 @@ def fetch_all_tracks_enriched(sp: spotipy.Spotify, playlist_id: str) -> list[dic
     Unlike the game's fetch_all_tracks, this also retrieves album.id,
     album.name, artists[].id, and added_at for enrichment and ETL watermarking.
     """
-    from tqdm import tqdm
-
     tracks = []
     result = sp.playlist_tracks(
         playlist_id,
         fields="items(added_at,track(id,name,uri,artists(id,name),album(id,name,release_date))),next",
         limit=100,
     )
-    with tqdm(desc=f"Fetching {playlist_id}", unit="track") as pbar:
-        while result:
-            batch = 0
-            for item in result.get("items", []):
-                track = item.get("track")
-                if track and track.get("id"):
-                    track["added_at"] = item.get("added_at")
-                    tracks.append(track)
-                    batch += 1
-            pbar.update(batch)
-            result = sp.next(result) if result.get("next") else None
+    while result:
+        batch = 0
+        for item in result.get("items", []):
+            track = item.get("track")
+            if track and track.get("id"):
+                track["added_at"] = item.get("added_at")
+                tracks.append(track)
+                batch += 1
+        result = sp.next(result) if result.get("next") else None
     return tracks
 
 

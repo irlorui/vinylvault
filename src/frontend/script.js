@@ -29,11 +29,8 @@ const api = {
   addScore:      () => api._post('/api/score/add'),
   addWildcard:   () => api._post('/api/wildcard/add'),
   useWildcard:   () => api._post('/api/wildcard/use'),
-  getSong: (extraExclude = []) => {
+  getSong: () => {
     const params = new URLSearchParams();
-    const timelineIds = currentPlayer().timeline.map(c => c.track_id).filter(Boolean);
-    const allExcluded = [...new Set([...timelineIds, ...extraExclude])];
-    if (allExcluded.length) params.set('exclude', allExcluded.join(','));
     const selected = [...game.selectedPlaylists];
     if (selected.length) params.set('playlists', selected.join(','));
     const qs = params.toString();
@@ -348,7 +345,7 @@ btnSkip.addEventListener('click', async () => {
     }
     const [data, track] = await Promise.all([
       api.useWildcard(),
-      api.getSong(game.currentTrack ? [game.currentTrack.track_id] : []),
+      api.getSong(),
     ]);
     syncPlayersFromResponse(data);
     game.currentTrack = track;

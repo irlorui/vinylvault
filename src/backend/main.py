@@ -1,15 +1,17 @@
 """FastAPI application entry point for VinylVault."""
 
+import logging
 import random
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 
 import spotipy
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
-from src.backend.config import get_settings
+from src.analytics.queries import get_db_playlists, get_playlist_tracks_for_game
+from src.analytics.routes import router as analytics_router
 from src.backend.models import (
     DeviceResponse,
     InitPlayersRequest,
@@ -21,15 +23,24 @@ from src.backend.models import (
 )
 from src.backend.score import GamePlayers
 from src.backend.spotify import (
-    fetch_all_tracks,
     get_devices,
-    get_playlist_name,
     get_random_track,
     get_spotify_client,
     pause_track,
     play_track,
     resume_track,
 )
+from src.etl.db import close_db_client, get_db_client
+from src.etl.models import (
+    ActivatePlaylistRequest,
+    ActivatePlaylistResponse,
+    ETLRunRequest,
+    ETLStatusResponse,
+)
+from src.etl.pipeline import run_etl
+from src.etl.transformer import db_row_to_game_track
+
+logger = logging.getLogger(__name__)
 
 _CURRENT_YEAR = datetime.now().year
 _EARLIEST_YEAR = 1960
@@ -37,17 +48,31 @@ _EARLIEST_YEAR = 1960
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize Spotify client, per-playlist tracks, and player state on startup."""
-    settings = get_settings()
+    """Initialize Spotify client, track cache, player state, and DuckDB on startup."""
     app.state.sp = await run_in_threadpool(get_spotify_client)
+
+    db = await run_in_threadpool(get_db_client)
+    app.state.etl_status = {
+        "status": "idle",
+        "playlists_processed": 0,
+        "tracks_upserted": 0,
+        "error": None,
+        "started_at": None,
+        "finished_at": None,
+    }
 
     tracks_by_playlist: dict[str, list] = {}
     playlists: list[PlaylistInfo] = []
-    for pid in settings.playlist_id_list():
-        t = await run_in_threadpool(fetch_all_tracks, app.state.sp, pid)
-        name = await run_in_threadpool(get_playlist_name, app.state.sp, pid)
-        tracks_by_playlist[pid] = t
-        playlists.append(PlaylistInfo(playlist_id=pid, name=name))
+
+    db_playlists = await run_in_threadpool(get_db_playlists, db)
+    if not db_playlists:
+        logger.warning("No playlists found in DB. Run ETL first.")
+    for pl in db_playlists:
+        pid = pl["playlist_id"]
+        raw_rows = await run_in_threadpool(get_playlist_tracks_for_game, db, pid)
+        tracks = [db_row_to_game_track(row) for row in raw_rows]
+        tracks_by_playlist[pid] = tracks
+        playlists.append(PlaylistInfo(playlist_id=pid, name=pl["name"]))
 
     seen: set[str] = set()
     all_tracks: list[dict] = []
@@ -62,10 +87,15 @@ async def lifespan(app: FastAPI):
     app.state.playlists = playlists
     app.state.players = GamePlayers()
     app.state.device_id = None
+    app.state.played_ids = set()
+
     yield
+
+    await run_in_threadpool(close_db_client)
 
 
 app = FastAPI(title="VinylVault", lifespan=lifespan)
+app.include_router(analytics_router)
 
 
 # ─── Response helpers ──────────────────────────────────────────────────────
@@ -109,7 +139,7 @@ def get_device_id(request: Request) -> str | None:
     return request.app.state.device_id
 
 
-# ─── Routes ────────────────────────────────────────────────────────────────
+# ─── Game routes ───────────────────────────────────────────────────────────
 
 
 @app.get("/api/reference-year", response_model=ReferenceYearResponse)
@@ -121,10 +151,12 @@ async def get_reference_year() -> ReferenceYearResponse:
 @app.post("/api/players/init", response_model=PlayersResponse)
 async def init_players(
     body: InitPlayersRequest,
+    request: Request,
     gp: GamePlayers = Depends(get_players),
 ) -> PlayersResponse:
     """Initialise all players and reset scores and wildcards for a new game."""
     gp.init(body.names)
+    request.app.state.played_ids = set()
     return _players_response(gp)
 
 
@@ -150,9 +182,9 @@ async def get_playlists(request: Request) -> list[PlaylistInfo]:
 
 @app.get("/api/song", response_model=TrackResponse)
 async def get_song(
+    request: Request,
     tracks: list[dict] = Depends(get_tracks),
     tracks_by_playlist: dict[str, list[dict]] = Depends(get_tracks_by_playlist),
-    exclude: str = "",
     playlists: str = "",
 ) -> TrackResponse:
     """Return a random track, optionally filtered to a subset of playlists."""
@@ -167,8 +199,9 @@ async def get_song(
                     pool.append(t)
     else:
         pool = tracks
-    exclude_ids = set(filter(None, exclude.split(","))) if exclude else None
-    return get_random_track(pool, exclude_ids)
+    track = get_random_track(pool, request.app.state.played_ids)
+    request.app.state.played_ids.add(track.track_id)
+    return track
 
 
 @app.get("/api/devices", response_model=list[DeviceResponse])
@@ -225,6 +258,98 @@ async def use_wildcard(gp: GamePlayers = Depends(get_players)) -> PlayersRespons
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
     return _players_response(gp)
+
+
+# ─── ETL routes ────────────────────────────────────────────────────────────
+
+
+@app.post("/api/etl/run", status_code=202, response_model=ETLStatusResponse)
+async def run_etl_route(
+    body: ETLRunRequest,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    sp: spotipy.Spotify = Depends(get_sp),
+) -> ETLStatusResponse:
+    """Trigger an ETL run for a list of playlist URIs (202 Accepted).
+
+    The pipeline runs in the background; poll GET /api/etl/status for progress.
+    """
+    status = request.app.state.etl_status
+    if status["status"] == "running":
+        raise HTTPException(
+            status_code=409, detail="An ETL run is already in progress."
+        )
+    db = get_db_client()
+    background_tasks.add_task(run_etl, body.playlist_uris, sp, db, status)
+    return ETLStatusResponse(
+        status="running",
+        playlists_processed=0,
+        tracks_upserted=0,
+        error=None,
+        started_at=datetime.now(timezone.utc),
+        finished_at=None,
+    )
+
+
+@app.get("/api/etl/status", response_model=ETLStatusResponse)
+async def etl_status(request: Request) -> ETLStatusResponse:
+    """Return the current ETL pipeline status."""
+    s = request.app.state.etl_status
+    return ETLStatusResponse(
+        status=s["status"],
+        playlists_processed=s["playlists_processed"],
+        tracks_upserted=s["tracks_upserted"],
+        error=s["error"],
+        started_at=s["started_at"],
+        finished_at=s["finished_at"],
+    )
+
+
+@app.post("/api/playlists/activate", response_model=ActivatePlaylistResponse)
+async def activate_playlist(
+    body: ActivatePlaylistRequest,
+    request: Request,
+) -> ActivatePlaylistResponse:
+    """Load a DB-stored playlist into the active game track pool.
+
+    Merges tracks from DuckDB into app.state.tracks and adds the playlist
+    to app.state.playlists so the frontend CONFIG checkboxes pick it up.
+    """
+    db = get_db_client()
+
+    playlists_in_db = await run_in_threadpool(get_db_playlists, db)
+    if not any(p["playlist_id"] == body.playlist_id for p in playlists_in_db):
+        raise HTTPException(status_code=404, detail="Playlist not found in database.")
+
+    track_rows = await run_in_threadpool(
+        get_playlist_tracks_for_game, db, body.playlist_id
+    )
+    game_tracks = [db_row_to_game_track(row) for row in track_rows]
+
+    request.app.state.tracks_by_playlist[body.playlist_id] = game_tracks
+    existing_ids = {t["id"] for t in request.app.state.tracks}
+    new_tracks = [t for t in game_tracks if t["id"] not in existing_ids]
+    request.app.state.tracks.extend(new_tracks)
+
+    # Also register the playlist in app.state.playlists for game CONFIG panel
+    existing_pl_ids = {p.playlist_id for p in request.app.state.playlists}
+    if body.playlist_id not in existing_pl_ids:
+        pl_name = next(
+            (
+                p["name"]
+                for p in playlists_in_db
+                if p["playlist_id"] == body.playlist_id
+            ),
+            body.playlist_id,
+        )
+        request.app.state.playlists.append(
+            PlaylistInfo(playlist_id=body.playlist_id, name=pl_name)
+        )
+
+    return ActivatePlaylistResponse(
+        tracks_added=len(new_tracks),
+        total_active_tracks=len(request.app.state.tracks),
+    )
 
 
 app.mount("/", StaticFiles(directory="src/frontend", html=True), name="frontend")

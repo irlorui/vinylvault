@@ -4,7 +4,6 @@ import logging
 from datetime import datetime, timezone
 
 import spotipy
-from tqdm import tqdm
 
 from src.backend.spotify import fetch_all_tracks_enriched, get_playlist_name
 from src.etl.db import DuckDBClient
@@ -26,13 +25,13 @@ def _parse_added_at(ts: str | None) -> datetime | None:
         return None
 
 
-def _fetch_max_added_at(sp: spotipy.Spotify, playlist_id: str) -> datetime | None:
+def _fetch_max_added_at(sp: spotipy.Spotify, playlist_uri: str) -> datetime | None:
     """Return the most recent added_at across all items in a playlist.
 
     Uses a lightweight fields-only fetch (no track metadata) to minimise API cost.
     """
     result = sp.playlist_tracks(
-        playlist_id,
+        playlist_uri,
         fields="items(added_at),next",
         limit=100,
     )
@@ -48,7 +47,7 @@ def _fetch_max_added_at(sp: spotipy.Spotify, playlist_id: str) -> datetime | Non
 
 def _log_etl_run(
     db: DuckDBClient,
-    playlist_id: str,
+    playlist_uri: str,
     status: str,
     tracks_processed: int,
     error: str | None,
@@ -64,7 +63,7 @@ def _log_etl_run(
     db.connection.execute(
         f"INSERT INTO metadata.etl_log ({cols}) VALUES (?, ?, ?, ?, ?, ?, ?)",  # noqa: E501
         [
-            playlist_id,
+            playlist_uri,
             status,
             tracks_processed,
             error,
@@ -81,7 +80,7 @@ def run_etl(
     db: DuckDBClient,
     status: dict,
 ) -> None:
-    """Run the full ETL pipeline for a list of playlist IDs.
+    """Run the full ETL pipeline for a list of playlist URIs.
 
     Mutates `status` in-place so GET /api/etl/status reflects live progress.
     """
@@ -101,54 +100,59 @@ def run_etl(
     try:
         all_tracks: list[dict] = []
         unique_artist_ids: set[str] = set()
+        # Tracks per playlist (ordered) — used after all tracks are upserted to
+        # populate playlist_tracks with integer FKs.
+        playlist_track_map: dict[str, list[dict]] = {}
 
-        for playlist_id in tqdm(playlist_ids, desc="Processing playlists"):
-            playlist_name = get_playlist_name(sp, playlist_id)
-            logger.info("Processing playlist: %s (%s)", playlist_name, playlist_id)
+        for playlist_uri in playlist_ids:
+            playlist_name = get_playlist_name(sp, playlist_uri)
+            logger.info("Processing playlist: %s (%s)", playlist_name, playlist_uri)
 
             # --- skip check ---
             try:
                 row = db.connection.execute(
                     """
-                    SELECT last_track_added_at FROM metadata.etl_log
+                    SELECT last_track_added_at 
+                    FROM metadata.etl_log
                     WHERE playlist_id = ? AND status = 'done'
                     ORDER BY finished_at DESC 
                     LIMIT 1
                     """,
-                    [playlist_id],
+                    [playlist_uri],
                 ).fetchone()
                 if row is not None:
                     watermark = row[0].replace(tzinfo=timezone.utc)
-                    max_added_at = _fetch_max_added_at(sp, playlist_id)
+                    max_added_at = _fetch_max_added_at(sp, playlist_uri)
                     if max_added_at is not None and max_added_at <= watermark:
                         logger.info(
-                            "Skipping playlist %s — no new tracks since last run (%s)",
-                            playlist_id,
+                            "Skipping %s — no new tracks since last run (%s)",
+                            playlist_uri,
                             watermark.isoformat(),
                         )
                         status["playlists_processed"] += 1
                         continue
             except Exception as skip_exc:
-                logger.warning("Skip check failed for %s: %s", playlist_id, skip_exc)
+                logger.warning("Skip check failed for %s: %s", playlist_uri, skip_exc)
 
             # --- fetch + upsert ---
             try:
-                tracks = fetch_all_tracks_enriched(sp, playlist_id)
+                tracks = fetch_all_tracks_enriched(sp, playlist_uri)
                 logger.info("Fetched %d tracks from %s", len(tracks), playlist_name)
 
-                playlist_meta = sp.playlist(playlist_id, fields="name") or {}
+                playlist_meta = sp.playlist(playlist_uri, fields="name") or {}
                 db.upsert_records(
                     "playlists",
                     [
                         {
-                            "playlist_id": playlist_id,
-                            "name": playlist_meta.get("name", playlist_id),
+                            "playlist_uri": playlist_uri,
+                            "name": playlist_meta.get("name", playlist_uri),
+                            "etl_run_at": run_started_at.strftime("%Y-%m-%dT%H:%M:%S"),
                         }
                     ],
-                    primary_key="playlist_id",
+                    primary_key="playlist_uri",
                 )
 
-                _replace_playlist_tracks(db, playlist_id, tracks)
+                playlist_track_map[playlist_uri] = tracks
 
                 for track in tracks:
                     for artist in track.get("artists") or []:
@@ -163,7 +167,7 @@ def run_etl(
 
                 _log_etl_run(
                     db,
-                    playlist_id,
+                    playlist_uri,
                     status="done",
                     tracks_processed=len(tracks),
                     error=None,
@@ -173,19 +177,19 @@ def run_etl(
                 )
                 status["playlists_processed"] += 1
                 logger.info(
-                    "Playlist %s processed: %d tracks, last added %s",
-                    playlist_id,
+                    "Playlist %s: %d tracks, last added %s",
+                    playlist_uri,
                     len(tracks),
                     last_track_added_at.isoformat(),
                 )
 
             except Exception as playlist_exc:
                 logger.error(
-                    "Failed to process playlist %s: %s", playlist_id, playlist_exc
+                    "Failed to process playlist %s: %s", playlist_uri, playlist_exc
                 )
                 _log_etl_run(
                     db,
-                    playlist_id,
+                    playlist_uri,
                     status="error",
                     tracks_processed=0,
                     error=str(playlist_exc),
@@ -195,14 +199,17 @@ def run_etl(
                 )
 
         logger.info("Enriching genres for %d unique artists", len(unique_artist_ids))
-        genres_by_artist = enrich_genres(sp, list(unique_artist_ids), db)
+        enrich_genres(sp, list(unique_artist_ids), db)
 
-        track_rows = transform_tracks(all_tracks, genres_by_artist)
+        track_rows = transform_tracks(all_tracks)
         if track_rows:
-            result = db.upsert_records("tracks", track_rows, primary_key="track_id")
+            result = db.upsert_records("tracks", track_rows, primary_key="track_uri")
             status["tracks_upserted"] = result.get("inserted", 0) + result.get(
                 "updated", 0
             )
+            _populate_tracks_artists(db, all_tracks)
+            for playlist_uri, tracks in playlist_track_map.items():
+                _replace_playlist_tracks(db, playlist_uri, tracks)
 
         status.update({"status": "done", "finished_at": datetime.now(timezone.utc)})
         logger.info("ETL complete: %d tracks upserted", status["tracks_upserted"])
@@ -218,22 +225,90 @@ def run_etl(
         )
 
 
-def _replace_playlist_tracks(
-    db: DuckDBClient, playlist_id: str, tracks: list[dict]
-) -> None:
-    """Delete and re-insert playlist-track associations for this playlist."""
-    try:
-        db.connection.execute(
-            "DELETE FROM raw.playlist_tracks WHERE playlist_id = ?",
-            [playlist_id],
-        )
-    except Exception:
-        pass  # table may not exist yet on first run; insert_records creates it
+def _populate_tracks_artists(db: DuckDBClient, all_tracks: list[dict]) -> None:
+    """Populate raw.tracks_artists from the full track list using integer PKs."""
+    track_uris = list({t["id"] for t in all_tracks if t.get("id")})
+    artist_uris = list(
+        {a["id"] for t in all_tracks for a in (t.get("artists") or []) if a.get("id")}
+    )
+    if not track_uris or not artist_uris:
+        return
 
-    records = [
-        {"playlist_id": playlist_id, "track_id": t["id"], "position": i}
-        for i, t in enumerate(tracks)
-        if t.get("id")
-    ]
-    if records:
-        db.insert_records("playlist_tracks", records)
+    ph_t = ",".join(f"'{tid}'" for tid in track_uris)
+    track_id_map: dict[str, int] = dict(
+        db.connection.execute(
+            f"SELECT track_uri, id FROM raw.tracks WHERE track_uri IN ({ph_t})"
+        ).fetchall()
+    )
+
+    ph_a = ",".join(f"'{aid}'" for aid in artist_uris)
+    artist_id_map: dict[str, int] = dict(
+        db.connection.execute(
+            f"SELECT artist_uri, id FROM raw.artists WHERE artist_uri IN ({ph_a})"
+        ).fetchall()
+    )
+
+    seen: set[tuple[int, int]] = set()
+    for track in all_tracks:
+        track_int_id = track_id_map.get(track.get("id", ""))
+        if track_int_id is None:
+            continue
+        for artist in track.get("artists") or []:
+            artist_int_id = artist_id_map.get(artist.get("id", ""))
+            if artist_int_id is None:
+                continue
+            pair = (track_int_id, artist_int_id)
+            if pair not in seen:
+                seen.add(pair)
+                db.connection.execute(
+                    "INSERT INTO raw.tracks_artists (track_id, artist_id)"
+                    " VALUES (?, ?) ON CONFLICT (track_id, artist_id) DO NOTHING",
+                    [track_int_id, artist_int_id],
+                )
+    logger.info("Populated tracks_artists: %d links", len(seen))
+
+
+def _replace_playlist_tracks(
+    db: DuckDBClient, playlist_uri: str, tracks: list[dict]
+) -> None:
+    """Delete and re-insert playlist-track links using integer PKs for both sides."""
+    pl_row = db.connection.execute(
+        "SELECT id FROM raw.playlists WHERE playlist_uri = ?", [playlist_uri]
+    ).fetchone()
+    if pl_row is None:
+        logger.warning("Playlist %s not in DB, skipping playlist_tracks", playlist_uri)
+        return
+    playlist_int_id = pl_row[0]
+
+    track_uris = [t["id"] for t in tracks if t.get("id")]
+    if not track_uris:
+        db.connection.execute(
+            "DELETE FROM raw.playlist_tracks WHERE playlist_id = ?", [playlist_int_id]
+        )
+        return
+
+    ph = ",".join(f"'{tid}'" for tid in set(track_uris))
+    track_id_map: dict[str, int] = dict(
+        db.connection.execute(
+            f"SELECT track_uri, id FROM raw.tracks WHERE track_uri IN ({ph})"
+        ).fetchall()
+    )
+
+    db.connection.execute(
+        "DELETE FROM raw.playlist_tracks WHERE playlist_id = ?", [playlist_int_id]
+    )
+
+    seen: set[str] = set()
+    for i, t in enumerate(tracks):
+        tid = t.get("id")
+        if not tid or tid in seen:
+            continue
+        seen.add(tid)
+        track_int_id = track_id_map.get(tid)
+        if track_int_id is None:
+            continue
+        db.connection.execute(
+            "INSERT INTO raw.playlist_tracks (playlist_id, track_id, position)"
+            " VALUES (?, ?, ?)",
+            [playlist_int_id, track_int_id, i],
+        )

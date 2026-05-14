@@ -59,15 +59,34 @@ Full rules and a game-flow diagram are in [How to Play](docs/how_to_play_vinylva
 ```
 src/
   backend/
-    config.py     # loads .config/.env credentials
-    models.py     # Pydantic response models (TrackResponse, PlayerState, PlayersResponse, …)
-    score.py      # GameScore, GameWildcard, Player, and GamePlayers classes
-    spotify.py    # spotipy client, get_random_track, play/pause/resume
-    main.py       # FastAPI app + static file serving
+    config.py      # loads .config/.env credentials
+    models.py      # Pydantic response models (TrackResponse, PlayerState, PlayersResponse, …)
+    score.py       # GameScore, GameWildcard, Player, and GamePlayers classes
+    spotify.py     # spotipy client, get_random_track, play/pause/resume
+    main.py        # FastAPI app + static file serving; loads tracks from DuckDB at startup
+  etl/
+    pipeline.py    # ETL orchestrator: fetch → enrich → transform → upsert
+    db.py          # DuckDBClient wrapper + migrations runner
+    enricher.py    # genre enrichment via batched sp.artists() calls
+    transformer.py # Spotify dicts → DB rows and DB rows → game format
+    models.py      # ETLRunRequest, ETLStatusResponse
+    migrations/    # SQL scripts for raw.* and metadata.* schemas
+  analytics/
+    queries.py     # DuckDB query functions (tracks, stats, playlists)
+    routes.py      # GET /api/analytics/* endpoints
+  cli/
+    run_etl.py     # CLI runner: python -m src.cli.run_etl
   frontend/
     index.html / script.js / styles.css
-docs/             # documentation on project
+data/
+  vinylvault.duckdb  # local DuckDB database (gitignored)
+  playlists.csv      # playlist IDs for batch ETL runs
+docs/              # documentation
 ```
+
+**ETL pipeline** — full reference in [ETL documentation](docs/etl.md):
+
+Tracks are loaded from Spotify into DuckDB via the ETL pipeline. Run `make etl` (or `POST /api/etl/run`) before starting the game. Subsequent runs skip playlists with no new tracks.
 
 **API endpoints** — full reference in [API documentation](docs/api.md):
 
@@ -77,8 +96,8 @@ docs/             # documentation on project
 | `POST` | `/api/players/init` | Initialise 1–4 named players, reset all state |
 | `POST` | `/api/turn/next` | Advance to next player's turn |
 | `POST` | `/api/score/add` | Add 1 point for current player |
-| `GET`  | `/api/song` | Random track; optional `?playlists=` and `?exclude=` filters |
-| `GET`  | `/api/playlists` | List configured playlists (ID + name) |
+| `GET`  | `/api/playlists` | List playlists in the active game pool |
+| `GET`  | `/api/song` | Random unplayed track; optional `?playlists=` filter |
 | `GET`  | `/api/devices` | List available Spotify devices |
 | `PUT`  | `/api/device/{device_id}` | Pin a device for playback |
 | `POST` | `/api/play/{track_id}` | Start playback on the pinned device |
@@ -86,6 +105,12 @@ docs/             # documentation on project
 | `POST` | `/api/resume` | Resume playback |
 | `POST` | `/api/wildcard/add` | Award 1 wildcard to current player |
 | `POST` | `/api/wildcard/use` | Spend 1 wildcard → 409 if none |
+| `POST` | `/api/etl/run` | Trigger ETL for playlist URIs → 202 Accepted |
+| `GET`  | `/api/etl/status` | Poll ETL pipeline progress |
+| `POST` | `/api/playlists/activate` | Load a DB playlist into the active pool |
+| `GET`  | `/api/analytics/songs` | Paginated/filtered track list from DuckDB |
+| `GET`  | `/api/analytics/stats` | Year + genre distributions, total count |
+| `GET`  | `/api/analytics/playlists` | All playlists stored in DuckDB |
 
 ---
 

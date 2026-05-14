@@ -10,70 +10,86 @@ All endpoints return JSON unless the response is `204 No Content`. Error bodies 
 
 ### GET /api/reference-year
 
-**Description:** Returns a random year between 1960 and the current year to use as the timeline anchor card.
+**Description:** Return a random anchor year for the game timeline.
 
 **Response:** `200` — `ReferenceYearResponse`
 
 #### Response body
 | Field | Type | Description |
 |-------|------|-------------|
-| `year` | `int` | Random anchor year in the range [1960, current year] |
+| `year` | `int` | Random integer in `[1960, current_year]` |
 
 ---
 
 ### POST /api/players/init
 
-**Description:** Initialises all players for a new game. Resets every player's score to 1 (the reference card counts as the first point) and wildcards to 0. Sets the current player to index 0.
+**Description:** Initialise 1–4 named players, reset all scores and wildcards, and clear the server-side played-track set for a new game.
 
-**Request body:** `InitPlayersRequest`
-
+#### Request body
 | Field | Type | Description |
 |-------|------|-------------|
-| `names` | `list[str]` | Player names, 1–4 entries required |
+| `names` | `list[str]` | 1–4 non-empty player names |
 
 **Response:** `200` — `PlayersResponse`
 
 #### Response body
 | Field | Type | Description |
 |-------|------|-------------|
-| `players` | `list[PlayerState]` | All players in order; see schema below |
-| `current_player_index` | `int` | Index into `players` of the player whose turn it is (always `0` after init) |
+| `players` | `list[PlayerState]` | Ordered list of all players |
+| `current_player_index` | `int` | Index of the player whose turn it is |
 
-**`PlayerState` schema**
+**`PlayerState`**
 | Field | Type | Description |
 |-------|------|-------------|
 | `name` | `str` | Player name |
-| `score` | `int` | Current score |
-| `wildcards` | `int` | Available wildcards |
+| `score` | `int` | Current score (starts at 1 — reference card) |
+| `wildcards` | `int` | Available wildcards (starts at 0) |
 
 #### Errors
 | Status | Meaning |
 |--------|---------|
-| `422` | `names` list is empty or has more than 4 entries |
+| `422` | `names` is empty, contains more than 4 entries, or any name is blank |
 
 ---
 
 ### POST /api/turn/next
 
-**Description:** Advances to the next player's turn, wrapping around to the first player after the last.
+**Description:** Advance to the next player's turn (wraps around).
 
-**Response:** `200` — `PlayersResponse` (see schema above)
+**Response:** `200` — `PlayersResponse` (see above)
 
 ---
 
 ### POST /api/score/add
 
-**Description:** Adds one point to the current player's score and returns the updated state for all players.
+**Description:** Add one point to the current player's score.
 
-**Response:** `200` — `PlayersResponse` (see schema above)
+**Response:** `200` — `PlayersResponse`
+
+---
+
+### GET /api/playlists
+
+**Description:** Return all playlists currently loaded in the active game pool.
+
+**Response:** `200` — `list[PlaylistInfo]`
+
+#### Response body (each item)
+| Field | Type | Description |
+|-------|------|-------------|
+| `playlist_id` | `str` | Spotify playlist ID |
+| `name` | `str` | Playlist display name |
 
 ---
 
 ### GET /api/song
 
-**Description:** Returns a random track from the playlist cached at startup. Tracks with malformed Spotify metadata (missing artists, invalid release date, `null` album) are automatically skipped. No Spotify API call is made per request.
+**Description:** Return a random track from the active pool, excluding tracks already served in the current game. The served track ID is recorded server-side so it will not be returned again until `POST /api/players/init` resets the game.
 
-**Query parameter:** `exclude` — comma-separated Spotify track IDs to exclude (e.g. `?exclude=id1,id2`). Used to prevent the same track from appearing twice in one player's timeline.
+#### Query parameters
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `playlists` | `str` | `""` | Comma-separated playlist IDs to restrict the pool |
 
 **Response:** `200` — `TrackResponse`
 
@@ -82,19 +98,19 @@ All endpoints return JSON unless the response is `204 No Content`. Error bodies 
 |-------|------|-------------|
 | `track_id` | `str` | Spotify track ID |
 | `name` | `str` | Track title |
-| `artist` | `str` | Primary artist name |
-| `year` | `str` | 4-digit release year extracted from the album's `release_date` |
+| `artist` | `str` | Comma-separated artist names |
+| `year` | `str` | 4-digit release year |
 
 #### Errors
 | Status | Meaning |
 |--------|---------|
-| `404` | No playable tracks remain after applying the exclude filter and skipping malformed entries |
+| `404` | No playable tracks remain in the pool (all played, pool is empty, or no tracks have a valid year) |
 
 ---
 
 ### GET /api/devices
 
-**Description:** Returns all Spotify playback devices currently available to the authenticated user. Returns an empty list if no devices are open.
+**Description:** Return all available Spotify playback devices.
 
 **Response:** `200` — `list[DeviceResponse]`
 
@@ -102,16 +118,20 @@ All endpoints return JSON unless the response is `204 No Content`. Error bodies 
 | Field | Type | Description |
 |-------|------|-------------|
 | `device_id` | `str` | Spotify device ID |
-| `name` | `str` | Human-readable device name |
-| `is_active` | `bool` | Whether Spotify is currently playing on this device |
+| `name` | `str` | Device display name |
+| `is_active` | `bool` | Whether the device is currently active in Spotify |
+
+#### Errors
+| Status | Meaning |
+|--------|---------|
+| `403` | Spotify Premium required |
+| `502` | Unexpected Spotify API error |
 
 ---
 
 ### PUT /api/device/{device_id}
 
-**Description:** Pins a Spotify device to use for all subsequent playback calls. Must be called before `POST /api/play/{track_id}`.
-
-**Path parameter:** `device_id` — Spotify device ID (from `GET /api/devices`)
+**Description:** Pin a Spotify device for all subsequent playback calls.
 
 **Response:** `204 No Content`
 
@@ -119,59 +139,61 @@ All endpoints return JSON unless the response is `204 No Content`. Error bodies 
 
 ### POST /api/play/{track_id}
 
-**Description:** Starts playback of the given track on the pinned device.
-
-**Path parameter:** `track_id` — Spotify track ID (from `GET /api/song`)
+**Description:** Start playback of the given track on the pinned device.
 
 **Response:** `204 No Content`
 
 #### Errors
 | Status | Meaning |
 |--------|---------|
+| `404` | `track_id` not in the active track pool |
 | `503` | No device pinned — call `PUT /api/device/{device_id}` first |
-| `403` | Spotify Premium is required for playback |
+| `403` | Spotify Premium required |
+| `502` | Unexpected Spotify API error |
 
 ---
 
 ### POST /api/pause
 
-**Description:** Pauses playback on the active Spotify device.
+**Description:** Pause playback on the active Spotify device.
 
 **Response:** `204 No Content`
 
 #### Errors
 | Status | Meaning |
 |--------|---------|
-| `403` | Spotify Premium is required |
+| `403` | Spotify Premium required |
+| `502` | Unexpected Spotify API error |
 
 ---
 
 ### POST /api/resume
 
-**Description:** Resumes playback on the active Spotify device.
+**Description:** Resume playback on the active Spotify device.
 
 **Response:** `204 No Content`
 
 #### Errors
 | Status | Meaning |
 |--------|---------|
-| `403` | Spotify Premium is required |
+| `403` | Spotify Premium required |
+| `502` | Unexpected Spotify API error |
 
 ---
 
 ### POST /api/wildcard/add
 
-**Description:** Awards one wildcard to the current player. Called after a correct song-name guess during the REVEAL phase.
+**Description:** Award one wildcard to the current player.
 
-**Response:** `200` — `PlayersResponse` (see schema above)
+**Response:** `200` — `PlayersResponse`
 
 ---
 
 ### POST /api/wildcard/use
 
-**Description:** Spends one of the current player's wildcards to skip the current song and draw a new one.
+**Description:** Spend one of the current player's wildcards.
 
-**Response:** `200` — `PlayersResponse` (see schema above)
+**Response:** `200` — `PlayersResponse`
 
 #### Errors
 | Status | Meaning |
@@ -180,6 +202,144 @@ All endpoints return JSON unless the response is `204 No Content`. Error bodies 
 
 ---
 
-## Win threshold
+### POST /api/etl/run
 
-The win threshold is **frontend-only**. The backend never compares scores against a threshold or signals a win — it only increments per-player `score` values. The frontend reads `game.winScore` (default `10`, configurable in the CONFIG panel before the game starts) and transitions to the `won` phase when `currentPlayer().score >= game.winScore`.
+**Description:** Trigger an ETL run for a list of Spotify playlist URIs. Accepts full URIs (`spotify:playlist:<id>`), share URLs, or bare IDs. Returns immediately with `202 Accepted`; poll `GET /api/etl/status` for progress.
+
+**Response:** `202` — `ETLStatusResponse`
+
+#### Request body
+| Field | Type | Description |
+|-------|------|-------------|
+| `playlist_uris` | `list[str]` | 1–20 Spotify playlist URIs, URLs, or IDs |
+
+#### Response body
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | `"idle"\|"running"\|"done"\|"error"` | Current pipeline state |
+| `playlists_processed` | `int` | Number of playlists completed so far |
+| `tracks_upserted` | `int` | Total tracks written to DuckDB |
+| `error` | `str\|null` | Error message if status is `"error"` |
+| `started_at` | `datetime\|null` | UTC timestamp when the run started |
+| `finished_at` | `datetime\|null` | UTC timestamp when the run finished |
+
+#### Errors
+| Status | Meaning |
+|--------|---------|
+| `409` | An ETL run is already in progress |
+| `422` | `playlist_uris` is empty, contains more than 20 entries, or contains an invalid identifier |
+
+---
+
+### GET /api/etl/status
+
+**Description:** Return the current ETL pipeline status.
+
+**Response:** `200` — `ETLStatusResponse` (see above)
+
+---
+
+### POST /api/playlists/activate
+
+**Description:** Load a DuckDB-stored playlist into the active game track pool and register it in the playlist list. Tracks already in the pool are not duplicated. Does not reset `played_ids`.
+
+#### Request body
+| Field | Type | Description |
+|-------|------|-------------|
+| `playlist_id` | `str` | Spotify playlist ID (must exist in DuckDB) |
+
+**Response:** `200` — `ActivatePlaylistResponse`
+
+#### Response body
+| Field | Type | Description |
+|-------|------|-------------|
+| `tracks_added` | `int` | New tracks merged into the active pool |
+| `total_active_tracks` | `int` | Total tracks in the pool after activation |
+
+#### Errors
+| Status | Meaning |
+|--------|---------|
+| `404` | Playlist not found in DuckDB — run ETL first |
+
+---
+
+### GET /api/analytics/songs
+
+**Description:** Return a paginated, filtered list of tracks from DuckDB. `is_active` reflects whether each track is currently in the game's active pool.
+
+#### Query parameters
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `playlist_id` | `str` | — | Filter to a specific playlist |
+| `genre` | `str` | — | Filter by genre name (exact match) |
+| `year_from` | `int` | — | Minimum release year (inclusive) |
+| `year_to` | `int` | — | Maximum release year (inclusive) |
+| `limit` | `int` | `50` | Page size (clamped to 1–500) |
+| `offset` | `int` | `0` | Pagination offset |
+
+**Response:** `200` — `SongsResponse`
+
+#### Response body
+| Field | Type | Description |
+|-------|------|-------------|
+| `total` | `int` | Total matching tracks (before pagination) |
+| `items` | `list[TrackRow]` | Tracks for the current page |
+
+**`TrackRow`**
+| Field | Type | Description |
+|-------|------|-------------|
+| `track_id` | `str` | Spotify track ID |
+| `name` | `str` | Track title |
+| `artists` | `list[{name: str}]` | Contributing artists |
+| `album_name` | `str\|null` | Album title |
+| `release_year` | `int\|null` | 4-digit release year |
+| `is_active` | `bool` | Whether this track is in the current active pool |
+
+---
+
+### GET /api/analytics/stats
+
+**Description:** Return year and genre distributions plus total track count for the DuckDB library. Optionally filter to a single playlist.
+
+#### Query parameters
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `playlist_id` | `str` | — | Restrict stats to this playlist |
+
+**Response:** `200` — `StatsResponse`
+
+#### Response body
+| Field | Type | Description |
+|-------|------|-------------|
+| `total_tracks` | `int` | Total distinct tracks |
+| `year_distribution` | `list[{year: int, count: int}]` | Track count per release year, ascending |
+| `genre_distribution` | `list[{genre: str, count: int}]` | Track count per genre, top 50 descending |
+| `playlists` | `list[DBPlaylistInfo]` | All playlists in DuckDB, newest first |
+
+**`DBPlaylistInfo`**
+| Field | Type | Description |
+|-------|------|-------------|
+| `playlist_id` | `str` | Spotify playlist ID |
+| `name` | `str` | Playlist display name |
+| `etl_run_at` | `datetime\|null` | UTC timestamp of the last ETL run |
+
+---
+
+### GET /api/analytics/playlists
+
+**Description:** Return all playlists stored in DuckDB.
+
+**Response:** `200` — `list[DBPlaylistInfo]` (see above)
+
+---
+
+## Game constants
+
+| Constant | Value | Effect |
+|----------|-------|--------|
+| Starting score | `1` | `POST /api/players/init` calls `GameScore.reset()` which sets `score = 1` — the reference card counts as the first point |
+| Starting wildcards | `0` | Each player starts with zero wildcards |
+| Earliest reference year | `1960` | `GET /api/reference-year` never returns a year before 1960 |
+| Played-track reset | on `POST /api/players/init` | `app.state.played_ids` is cleared; all tracks become eligible again |
+
+The win threshold is configured in the frontend only (`#win-score-select`, default 10). The backend tracks scores but has no win condition — it is up to the client to detect victory.

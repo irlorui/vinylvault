@@ -198,6 +198,14 @@ class DuckDBClient:
 _DB_CLIENT: DuckDBClient | None = None
 
 
+def get_db_client() -> DuckDBClient:
+    """Return the shared DuckDBClient, initializing it on first call."""
+    global _DB_CLIENT
+    if _DB_CLIENT is None:
+        _DB_CLIENT = DuckDBClient()
+    return _DB_CLIENT
+
+
 def close_db_client() -> None:
     """Close and release the shared DuckDBClient."""
     global _DB_CLIENT

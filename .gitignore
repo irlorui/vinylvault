@@ -8,3 +8,4 @@ CODEOWNERS
 htmlcov/
 .pytest_cache/
 .DS_Store
+data/
